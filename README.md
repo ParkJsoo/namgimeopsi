@@ -62,6 +62,8 @@
 - [Technical design](docs/03-technical-design.md)
 - [Development roadmap](docs/04-development-roadmap.md)
 - [Competitive-analysis notes](docs/05-competitive-analysis.md)
+- [Design direction and system](docs/06-design-direction.md)
+- [Wireframe specification](docs/07-wireframe-specification.md)
 
 ## Status
 
