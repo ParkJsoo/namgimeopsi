@@ -57,6 +57,7 @@
 
 ## Documentation
 
+- [Current context / handoff](docs/00-current-context.md)
 - [Product brief](docs/01-product-brief.md)
 - [UX specification](docs/02-ux-specification.md)
 - [Technical design](docs/03-technical-design.md)
