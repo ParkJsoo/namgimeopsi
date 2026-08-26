@@ -11,74 +11,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type StoragePlace = '냉장' | '냉동' | '실온';
+import { useInventory } from '@/features/inventory/use-inventory';
+import {
+  blankDraft,
+  getDateDescription,
+  getFoodStatus,
+  type InventoryDraft,
+  type InventoryItem,
+  type StoragePlace,
+} from '@/features/inventory/types';
 
-type InventoryItem = {
-  id: string;
-  name: string;
-  quantity: string;
-  storage: StoragePlace;
-  useBy: string;
-  reason: string;
-  isLeftover?: boolean;
-};
-
-type Draft = Omit<InventoryItem, 'id' | 'reason' | 'isLeftover'>;
-
-const seedInventory: InventoryItem[] = [
-  {
-    id: 'leftover-chicken',
-    name: '남은 치킨',
-    quantity: '1인분',
-    storage: '냉장',
-    useBy: '오늘',
-    reason: '어제부터 냉장 보관 중이에요.',
-    isLeftover: true,
-  },
-  {
-    id: 'tofu',
-    name: '두부',
-    quantity: '1모',
-    storage: '냉장',
-    useBy: '이틀 안',
-    reason: '개봉 전이지만 이번 주 안에 써보세요.',
-  },
-  {
-    id: 'zucchini',
-    name: '애호박',
-    quantity: '반 개',
-    storage: '냉장',
-    useBy: '이틀 안',
-    reason: '남은 양이 적어 먼저 쓰기 좋아요.',
-  },
-  {
-    id: 'eggs',
-    name: '계란',
-    quantity: '9개',
-    storage: '냉장',
-    useBy: '8월 30일',
-    reason: '여유 있어요.',
-  },
-  {
-    id: 'dumplings',
-    name: '냉동만두',
-    quantity: '2봉',
-    storage: '냉동',
-    useBy: '11월 25일',
-    reason: '여유 있어요.',
-  },
-];
-
-const blankDraft: Draft = {
-  name: '',
-  quantity: '1인분',
-  storage: '냉장',
-  useBy: '이틀 안',
-};
-
-function statusTone(useBy: string) {
-  if (useBy === '오늘') return styles.statusToday;
-  if (useBy === '이틀 안') return styles.statusSoon;
+function statusTone(item: InventoryItem) {
+  if (getFoodStatus(item) === 'today') return styles.statusToday;
+  if (getFoodStatus(item) === 'soon') return styles.statusSoon;
   return styles.statusRelaxed;
 }
 
@@ -106,27 +51,76 @@ function StoragePicker({
   );
 }
 
+function KindPicker({
+  value,
+  onChange,
+}: {
+  value: InventoryDraft['kind'];
+  onChange: (kind: InventoryDraft['kind']) => void;
+}) {
+  return (
+    <View style={styles.optionRow}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => onChange('ingredient')}
+        style={[styles.option, value === 'ingredient' && styles.optionSelected]}>
+        <Text style={[styles.optionText, value === 'ingredient' && styles.optionTextSelected]}>식재료</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => onChange('leftover')}
+        style={[styles.option, value === 'leftover' && styles.optionSelected]}>
+        <Text style={[styles.optionText, value === 'leftover' && styles.optionTextSelected]}>남은 음식</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'home' | 'inventory'>('home');
-  const [inventory, setInventory] = useState(seedInventory);
+  const { items: inventory, isReady, add, update, remove } = useInventory();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Draft>(blankDraft);
+  const [draft, setDraft] = useState<InventoryDraft>(blankDraft);
+  const [selectedStorage, setSelectedStorage] = useState<StoragePlace>('냉장');
+  const [inventoryFilter, setInventoryFilter] = useState<'all' | 'leftover' | 'today'>('all');
 
   const priorityItems = useMemo(
-    () => inventory.filter((item) => item.useBy === '오늘' || item.useBy === '이틀 안').slice(0, 3),
+    () => inventory.filter((item) => getFoodStatus(item) !== 'relaxed').slice(0, 3),
     [inventory],
   );
 
-  const openCreate = () => {
+  const visibleInventory = useMemo(
+    () =>
+      inventory.filter((item) => {
+        if (item.storage !== selectedStorage) return false;
+        if (inventoryFilter === 'leftover') return item.kind === 'leftover';
+        if (inventoryFilter === 'today') return getFoodStatus(item) === 'today';
+        return true;
+      }),
+    [inventory, inventoryFilter, selectedStorage],
+  );
+
+  const openCreate = (kind: InventoryDraft['kind'] = 'ingredient') => {
     setEditingId(null);
-    setDraft(blankDraft);
+    setDraft({
+      ...blankDraft,
+      kind,
+      storage: kind === 'leftover' ? '냉장' : blankDraft.storage,
+      recommendedUseBy: kind === 'leftover' ? '내일까지' : blankDraft.recommendedUseBy,
+    });
     setEditorOpen(true);
   };
 
   const openEdit = (item: InventoryItem) => {
     setEditingId(item.id);
-    setDraft({ name: item.name, quantity: item.quantity, storage: item.storage, useBy: item.useBy });
+    setDraft({
+      name: item.name,
+      quantity: item.quantity,
+      storage: item.storage,
+      recommendedUseBy: item.recommendedUseBy,
+      kind: item.kind,
+    });
     setEditorOpen(true);
   };
 
@@ -137,23 +131,9 @@ export default function HomeScreen() {
     }
 
     if (editingId) {
-      setInventory((items) =>
-        items.map((item) =>
-          item.id === editingId
-            ? { ...item, ...draft, name: draft.name.trim(), reason: '직접 수정한 재고예요.' }
-            : item,
-        ),
-      );
+      update(editingId, draft);
     } else {
-      setInventory((items) => [
-        {
-          id: `manual-${Date.now()}`,
-          ...draft,
-          name: draft.name.trim(),
-          reason: '직접 추가한 재고예요.',
-        },
-        ...items,
-      ]);
+      add(draft);
     }
     setEditorOpen(false);
   };
@@ -166,7 +146,7 @@ export default function HomeScreen() {
         text: '제외',
         style: 'destructive',
         onPress: () => {
-          setInventory((items) => items.filter((item) => item.id !== editingId));
+          remove(editingId);
           setEditorOpen(false);
         },
       },
@@ -178,10 +158,20 @@ export default function HomeScreen() {
       { text: '아직 있어요', style: 'cancel' },
       {
         text: '다 먹음',
-        onPress: () => setInventory((items) => items.filter((candidate) => candidate.id !== item.id)),
+        onPress: () => remove(item.id),
       },
     ]);
   };
+
+  if (!isReady) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingScreen}>
+          <Text style={styles.eyebrow}>내 냉장고를 불러오고 있어요.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -209,7 +199,7 @@ export default function HomeScreen() {
                       onPress={() => openEdit(item)}
                       style={[styles.priorityRow, index > 0 && styles.priorityDivider]}>
                       <View style={styles.priorityIcon}>
-                        <Text>{item.isLeftover ? '◒' : '◌'}</Text>
+                        <Text>{item.kind === 'leftover' ? '◒' : '◌'}</Text>
                       </View>
                       <View style={styles.priorityCopy}>
                         <Text style={styles.foodName}>{item.name}</Text>
@@ -223,6 +213,17 @@ export default function HomeScreen() {
                 )}
               </View>
 
+              <View style={styles.quickAddRow}>
+                <Pressable accessibilityRole="button" onPress={() => openCreate('leftover')} style={styles.quickAddButton}>
+                  <Text style={styles.quickAddTitle}>남은 음식</Text>
+                  <Text style={styles.quickAddHint}>지금 바로 기록</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={() => openCreate('ingredient')} style={styles.quickAddButton}>
+                  <Text style={styles.quickAddTitle}>직접 추가</Text>
+                  <Text style={styles.quickAddHint}>식재료 하나씩</Text>
+                </Pressable>
+              </View>
+
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>오늘의 한 끼</Text>
                 <Text style={styles.link}>모두 보기</Text>
@@ -231,7 +232,11 @@ export default function HomeScreen() {
                 title="치킨마요 덮밥"
                 meta="15분 · 1인분"
                 reason="남은 치킨과 계란을 오늘 쓰기 좋아요"
-                onPress={() => consumeItem(inventory.find((item) => item.id === 'leftover-chicken') ?? priorityItems[0])}
+                onPress={() => {
+                  const chicken = inventory.find((item) => item.id === 'leftover-chicken');
+                  if (chicken) consumeItem(chicken);
+                  else openCreate('leftover');
+                }}
               />
               <RecipeCard
                 title="애호박 두부덮밥"
@@ -247,27 +252,40 @@ export default function HomeScreen() {
                   <Text style={styles.eyebrow}>내 냉장고</Text>
                   <Text style={styles.title}>먼저 먹기 순서예요</Text>
                 </View>
-                <Pressable accessibilityRole="button" onPress={openCreate} style={styles.addSmallButton}>
+                <Pressable accessibilityRole="button" onPress={() => openCreate('ingredient')} style={styles.addSmallButton}>
                   <Text style={styles.addSmallButtonText}>직접 추가</Text>
                 </Pressable>
               </View>
-              <StoragePicker value={draft.storage} onChange={(storage) => setDraft((current) => ({ ...current, storage }))} />
+              <StoragePicker value={selectedStorage} onChange={setSelectedStorage} />
+              <View style={styles.filterRow}>
+                {([
+                  ['all', '전체'],
+                  ['leftover', '남은 음식'],
+                  ['today', '오늘 권장'],
+                ] as const).map(([filter, label]) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={filter}
+                    onPress={() => setInventoryFilter(filter)}
+                    style={[styles.filterChip, inventoryFilter === filter && styles.filterChipSelected]}>
+                    <Text style={[styles.filterText, inventoryFilter === filter && styles.filterTextSelected]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
               <View style={styles.inventoryList}>
-                {inventory
-                  .filter((item) => item.storage === draft.storage)
-                  .map((item) => (
+                {visibleInventory.map((item) => (
                     <Pressable key={item.id} onPress={() => openEdit(item)} style={styles.inventoryRow}>
                       <View style={styles.inventoryCopy}>
                         <Text style={styles.foodName}>{item.name}</Text>
-                        <Text style={styles.inventoryMeta}>{item.quantity} · {item.storage}</Text>
+                        <Text style={styles.inventoryMeta}>{item.quantity} · {getDateDescription(item)}</Text>
                       </View>
-                      <View style={[styles.statusChip, statusTone(item.useBy)]}>
-                        <Text style={styles.statusText}>{item.useBy} 권장</Text>
+                      <View style={[styles.statusChip, statusTone(item)]}>
+                        <Text style={styles.statusText}>{item.recommendedUseBy} 권장</Text>
                       </View>
                     </Pressable>
-                  ))}
-                {!inventory.some((item) => item.storage === draft.storage) && (
-                  <Text style={styles.emptyText}>여기에 등록된 재고가 없어요.</Text>
+                ))}
+                {visibleInventory.length === 0 && (
+                  <Text style={styles.emptyText}>이 조건에 맞는 재고가 없어요.</Text>
                 )}
               </View>
             </>
@@ -279,7 +297,7 @@ export default function HomeScreen() {
             <Text style={[styles.tabIcon, activeTab === 'home' && styles.tabActive]}>⌂</Text>
             <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActive]}>홈</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={openCreate} style={styles.fab}>
+          <Pressable accessibilityRole="button" onPress={() => openCreate('ingredient')} style={styles.fab}>
             <Text style={styles.fabText}>＋</Text>
           </Pressable>
           <Pressable accessibilityRole="tab" onPress={() => setActiveTab('inventory')} style={styles.tab}>
@@ -294,6 +312,18 @@ export default function HomeScreen() {
           <View style={styles.sheet}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>{editingId ? '재고 수정' : '직접 추가'}</Text>
+            <Text style={styles.fieldLabel}>등록할 항목</Text>
+            <KindPicker
+              value={draft.kind}
+              onChange={(kind) =>
+                setDraft((current) => ({
+                  ...current,
+                  kind,
+                  storage: kind === 'leftover' ? '냉장' : current.storage,
+                  recommendedUseBy: kind === 'leftover' ? '내일까지' : current.recommendedUseBy,
+                }))
+              }
+            />
             <Text style={styles.fieldLabel}>식재료 이름</Text>
             <TextInput
               accessibilityLabel="식재료 이름"
@@ -315,11 +345,15 @@ export default function HomeScreen() {
             <Text style={styles.fieldLabel}>권장 섭취 시점</Text>
             <TextInput
               accessibilityLabel="권장 섭취 시점"
-              value={draft.useBy}
-              onChangeText={(useBy) => setDraft((current) => ({ ...current, useBy }))}
+              value={draft.recommendedUseBy}
+              onChangeText={(recommendedUseBy) => setDraft((current) => ({ ...current, recommendedUseBy }))}
               style={styles.input}
             />
-            <Text style={styles.safetyNote}>포장 표기일이 아닌, 사용자가 정할 수 있는 권장 섭취 시점이에요.</Text>
+            <Text style={styles.safetyNote}>
+              {draft.kind === 'leftover'
+                ? '조리·보관 시작은 지금으로 기록돼요. 이는 식품 안전을 보장하는 날짜가 아니에요.'
+                : '포장 표기일과 별도로, 사용자가 정할 수 있는 권장 섭취 시점이에요.'}
+            </Text>
             <Pressable accessibilityRole="button" onPress={saveItem} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>{editingId ? '수정 완료' : '냉장고에 담기'}</Text>
             </Pressable>
@@ -355,6 +389,7 @@ function RecipeCard({ title, meta, reason, onPress }: { title: string; meta: str
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FAF8F4' },
   app: { flex: 1, backgroundColor: '#FAF8F4' },
+  loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF8F4' },
   scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 116 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 },
   inventoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
@@ -371,6 +406,10 @@ const styles = StyleSheet.create({
   foodName: { fontSize: 15, lineHeight: 22, fontWeight: '700', color: '#1D211C' },
   reason: { marginTop: 2, fontSize: 12, lineHeight: 17, color: '#6C7168' },
   chevron: { fontSize: 28, color: '#6C7168' },
+  quickAddRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  quickAddButton: { flex: 1, minHeight: 74, borderRadius: 20, padding: 16, backgroundColor: '#F1EEE7', justifyContent: 'center' },
+  quickAddTitle: { color: '#1D211C', fontSize: 14, lineHeight: 20, fontWeight: '700' },
+  quickAddHint: { marginTop: 2, color: '#6C7168', fontSize: 12, lineHeight: 17 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 12 },
   link: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: '#2F6B4F' },
   recipeCard: { borderRadius: 20, backgroundColor: '#FFFFFF', overflow: 'hidden', marginBottom: 12 },
@@ -386,6 +425,11 @@ const styles = StyleSheet.create({
   optionSelected: { backgroundColor: '#E4F0E7', borderWidth: 1, borderColor: '#2F6B4F' },
   optionText: { color: '#6C7168', fontSize: 14, fontWeight: '600' },
   optionTextSelected: { color: '#2F6B4F' },
+  filterRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  filterChip: { minHeight: 36, borderRadius: 999, paddingHorizontal: 13, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
+  filterChipSelected: { backgroundColor: '#E4F0E7' },
+  filterText: { color: '#6C7168', fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  filterTextSelected: { color: '#2F6B4F' },
   inventoryList: { marginTop: 16, borderRadius: 20, backgroundColor: '#FFFFFF', overflow: 'hidden' },
   inventoryRow: { padding: 16, minHeight: 76, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E9E6DF' },
   inventoryCopy: { flex: 1 },
