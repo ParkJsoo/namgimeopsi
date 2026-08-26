@@ -8,7 +8,7 @@
 - 목적: AI 신뢰 UX와 모바일 제품 설계/구현 역량을 보여 주는 공개 포트폴리오 프로젝트
 - GitHub: <https://github.com/ParkJsoo/namgimeopsi>
 - 로컬 경로: `/Users/jeongsoopark/develop/namgimeopsi`
-- 구현 상태: 제품 정의와 문서화 완료, 앱 구현은 아직 시작하지 않음
+- 구현 상태: Expo TypeScript 초기화와 시드 데이터 기반 수동 재고 CRUD의 첫 화면을 구현했다. Supabase·AI 영수증·실기기 기능은 아직 시작하지 않았다.
 
 ## Locked decisions
 
@@ -38,16 +38,24 @@
   - App Screens에 온보딩, 홈, 영수증 검수, 레시피 상세, 완료/차감 흐름 구성 및 검증
 - 주의: 이번 세션에서 Figma Starter MCP 도구 호출 한도에 도달했다. 다음 세션에서는 먼저 한도 해제 여부를 확인하고, 막혀 있으면 Figma 작업을 억지로 우회하지 말고 앱 구현/문서 작업으로 전환한다.
 
+## Implementation status
+
+- Expo Router 기반 TypeScript 앱을 루트에 초기화했다.
+- 현재는 로컬 시드 데이터로 홈과 냉장고 화면을 렌더링한다. 직접 추가, 수정, 제외, `다 먹음` 처리는 메모리 상태에서 동작한다.
+- 홈은 남은 치킨·두부·애호박의 우선 소비 카드와 두 개의 설명 가능한 메뉴 카드를 보여 준다.
+- 이 단계는 백엔드 연동 전 UI·상태 전환 검증용이다. 앱을 다시 실행하면 변경한 재고는 초기 시드 상태로 돌아간다.
+
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
 2. Figma MCP 호출 가능 여부를 한 번 확인한다. 가능하면 공용 컴포넌트 → 핵심 화면 순으로 계속 작업한다.
-3. 병행 또는 Figma가 막힌 경우 Expo TypeScript 프로젝트를 초기화하고, 시드 데이터 기반 수동 재고 CRUD부터 구현한다.
-4. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
+3. Figma가 막힌 경우 현재 로컬 재고 상태를 영속 계층으로 분리하고, 남은 음식 등록 및 재고 필터·상세 수정 흐름을 보강한다.
+4. 이후 Supabase 초기화와 익명 로그인, 시드 데이터 저장을 연결한다.
+5. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
 
 ## Last verified repository state
 
 - 문서 기반 커밋 2개가 원격 `main`에 반영돼 있다.
   - `8790ff4 docs: add portfolio product foundation`
   - `f669b3e docs: define design system and wireframes`
-- 이 문서를 추가한 뒤 별도 인계 커밋을 만든다.
+- `83254f7` 이후 Expo 초기화와 로컬 시드 재고 CRUD 작업이 진행 중이며, 검증 후 별도 커밋한다.
