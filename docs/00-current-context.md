@@ -8,7 +8,7 @@
 - 목적: AI 신뢰 UX와 모바일 제품 설계/구현 역량을 보여 주는 공개 포트폴리오 프로젝트
 - GitHub: <https://github.com/ParkJsoo/namgimeopsi>
 - 로컬 경로: `/Users/jeongsoopark/develop/namgimeopsi`
-- 구현 상태: Expo TypeScript 초기화와 시드 데이터 기반 수동 재고 CRUD의 첫 화면을 구현했다. Supabase·AI 영수증·실기기 기능은 아직 시작하지 않았다.
+- 구현 상태: Expo TypeScript 앱에서 로컬 영속 재고 CRUD와 남은 음식 등록·필터를 구현했다. Supabase·AI 영수증·실기기 기능은 아직 시작하지 않았다.
 
 ## Locked decisions
 
@@ -36,7 +36,7 @@
 - 아직 할 일:
   - Foundations 안에 공용 `Button`, `Status chip`, `Recipe card`, `Bottom navigation` 컴포넌트 구성
   - App Screens에 온보딩, 홈, 영수증 검수, 레시피 상세, 완료/차감 흐름 구성 및 검증
-- 주의: 이번 세션에서 Figma Starter MCP 도구 호출 한도에 도달했다. 다음 세션에서는 먼저 한도 해제 여부를 확인하고, 막혀 있으면 Figma 작업을 억지로 우회하지 말고 앱 구현/문서 작업으로 전환한다.
+- 주의: Figma Starter MCP 도구 호출 한도에 도달한 상태를 이번 세션에도 확인했다. 다음 세션에서는 먼저 한도 해제 여부를 확인하고, 막혀 있으면 Figma 작업을 억지로 우회하지 말고 앱 구현/문서 작업으로 전환한다.
 
 ## Implementation status
 
@@ -45,18 +45,20 @@
 - 홈은 남은 치킨·두부·애호박의 우선 소비 카드와 두 개의 설명 가능한 메뉴 카드를 보여 준다.
 - 남은 음식은 식재료와 별도 종류로 등록하며, 기본값은 `냉장 · 1인분 · 지금 보관 시작 · 내일까지 권장`이다. 냉장고 화면은 보관 위치와 전체/남은 음식/오늘 권장 필터를 제공한다.
 - 이 단계는 백엔드 연동 전 UI·상태 전환 검증용이다. 기기 로컬에만 저장되며 계정·다른 기기와 동기화되지 않는다.
+- 검증 완료: `npx tsc --noEmit`, `npx expo export --platform web`.
 
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
 2. Figma MCP 호출 가능 여부를 한 번 확인한다. 가능하면 공용 컴포넌트 → 핵심 화면 순으로 계속 작업한다.
-3. Figma가 막힌 경우 로컬 재고 저장소를 Supabase 데이터 모델로 대체하고, 익명 로그인과 시드 데이터 저장을 연결한다.
-4. 재고 이벤트·날짜 계산·레시피 점수화 로직을 순수 함수로 분리하고 테스트한다.
+3. Figma가 막힌 경우 Supabase 프로젝트를 준비한 뒤, 로컬 저장소 인터페이스를 데이터 모델·익명 로그인·시드 데이터 저장으로 대체한다. Supabase 자격 증명 또는 프로젝트 선택이 없으면 이 단계는 시작하지 않는다.
+4. 자격 증명이 준비되기 전에는 재고 이벤트·날짜 계산·레시피 점수화 로직을 순수 함수로 분리하고 테스트한다.
 5. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
 
 ## Last verified repository state
 
-- 문서 기반 커밋 2개가 원격 `main`에 반영돼 있다.
-  - `8790ff4 docs: add portfolio product foundation`
-  - `f669b3e docs: define design system and wireframes`
-- `83254f7` 이후 Expo 초기화와 로컬 시드 재고 CRUD 작업이 진행 중이며, 검증 후 별도 커밋한다.
+- 원격 `main`은 `83254f7 docs: add project handoff context`까지 반영돼 있다.
+- 이번 세션의 로컬 커밋:
+  - `dfe31d2 feat: initialize Expo inventory prototype`
+  - `c8b1ad2 feat: persist inventory and add leftover flow`
+- 워크트리는 깨끗하다. 위 구현 커밋은 아직 원격에 푸시하지 않았다.
