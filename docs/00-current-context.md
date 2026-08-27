@@ -33,10 +33,12 @@
   - Noto Sans KR 텍스트 스타일 6개, 카드 Elevation 스타일 1개
   - Cover 화면과 Foundations의 컬러/타이포 문서화
   - Cover와 Foundations는 캡처 후 시각 검증 완료
+  - Foundations에 `Button` 컴포넌트 세트 추가: `Style=Primary / Secondary` 2개 변형, 240×52 터치 영역, 12px 반경, 14px `계속하기` 라벨. Primary는 브랜드 배경·흰 라벨, Secondary는 흰 배경·1px 브랜드 외곽선·브랜드 라벨이다.
+  - `App Screens`에 375×812 홈 화면의 첫 구성을 추가했다. 인사말·`오늘 먼저 먹을 게 있어요` Display 헤더, 연한 초록의 우선 소비 카드(제목/H2·추천 근거/Body), `오늘의 한 끼` 섹션과 첫 레시피 카드 골격을 실제 캔버스에서 시각 검증했다.
 - 아직 할 일:
-  - Foundations 안에 공용 `Button`, `Status chip`, `Recipe card`, `Bottom navigation` 컴포넌트 구성
-  - App Screens에 온보딩, 홈, 영수증 검수, 레시피 상세, 완료/차감 흐름 구성 및 검증
-- 주의: 이번 세션에서 파일의 페이지 목록을 한 번 읽은 뒤, 다음 호출부터 Starter MCP 호출 한도 오류가 재발했다. 다음 세션에서는 한 번만 확인하고, 막혀 있으면 Figma 작업을 억지로 우회하지 말고 앱 구현/문서 작업으로 전환한다.
+  - Foundations 안에 공용 `Status chip`, `Recipe card`, `Bottom navigation` 컴포넌트 구성
+  - 홈의 첫 레시피 카드 메타·추천 근거·하단 탭/추가 CTA를 완성하고, App Screens에 온보딩, 영수증 검수, 레시피 상세, 완료/차감 흐름 구성 및 검증
+- 주의: Figma MCP는 Starter 호출 한도 오류가 재발했지만, 사용자가 데스크톱 앱에서 파일을 `박정수의 팀` 프로젝트로 옮긴 뒤 직접 편집은 가능했다. MCP 한도를 우회하지 말고, 필요 시 데스크톱 앱에서 한 컴포넌트/한 화면씩 시각 검증하며 작업한다.
 
 ## Implementation status
 
@@ -55,7 +57,7 @@
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. Figma MCP 호출 가능 여부를 한 번 확인한다. 가능하면 Foundations의 공용 컴포넌트 → App Screens의 핵심 화면 순으로 계속 작업한다. 한도 오류면 더 호출하지 않는다.
+2. Figma MCP 호출 가능 여부를 한 번 확인한다. 한도 오류면 더 호출하지 않고, 데스크톱 앱에서 Foundations의 공용 컴포넌트 → App Screens의 핵심 화면 순으로 계속 작업한다.
 3. Figma가 막힌 경우 Supabase 프로젝트를 준비한다. 프로젝트 선택과 `EXPO_PUBLIC_SUPABASE_URL`·`EXPO_PUBLIC_SUPABASE_ANON_KEY`가 있어야 로컬 저장소를 데이터 모델·익명 로그인·시드 데이터 저장으로 대체한다.
 4. 자격 증명이 준비되기 전에는 도메인 함수를 앱의 시드 재고와 메뉴 카드에 연결하고, 조리/섭취 완료 시 이벤트 원장을 남기도록 UI를 확장한다.
 5. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
@@ -67,4 +69,5 @@
   - `dfe31d2 feat: initialize Expo inventory prototype`
   - `c8b1ad2 feat: persist inventory and add leftover flow`
   - `5a09183 docs: update implementation handoff`
-- 위 커밋은 아직 원격에 푸시하지 않았다. 이번 도메인 로직 변경은 검증 후 별도 작은 커밋으로 기록한다.
+- `9b8924c feat: add tested inventory domain logic`
+- 위 커밋은 아직 원격에 푸시하지 않았다. Figma 변경은 외부 디자인 파일에 반영됐고, 이번 문서 상태 갱신은 별도 작은 커밋으로 기록한다.
