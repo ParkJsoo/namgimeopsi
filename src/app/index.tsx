@@ -89,6 +89,7 @@ export default function HomeScreen() {
     () => inventory.filter((item) => getFoodStatus(item) !== 'relaxed').slice(0, 3),
     [inventory],
   );
+  const featuredPriority = priorityItems[0];
 
   const visibleInventory = useMemo(
     () =>
@@ -184,44 +185,23 @@ export default function HomeScreen() {
                   <Text style={styles.eyebrow}>안녕하세요, 윤서님</Text>
                   <Text style={styles.title}>오늘 먼저 먹을 게 있어요</Text>
                 </View>
-                <Pressable accessibilityRole="button" style={styles.iconButton}>
-                  <Text style={styles.iconText}>◌</Text>
-                </Pressable>
               </View>
 
-              <Text style={styles.sectionTitle}>오늘 먼저 먹으면 좋은 것</Text>
               <View style={styles.priorityCard}>
-                {priorityItems.length ? (
-                  priorityItems.map((item, index) => (
-                    <Pressable
-                      accessibilityRole="button"
-                      key={item.id}
-                      onPress={() => openEdit(item)}
-                      style={[styles.priorityRow, index > 0 && styles.priorityDivider]}>
-                      <View style={styles.priorityIcon}>
-                        <Text>{item.kind === 'leftover' ? '◒' : '◌'}</Text>
-                      </View>
-                      <View style={styles.priorityCopy}>
-                        <Text style={styles.foodName}>{item.name}</Text>
-                        <Text style={styles.reason}>{item.reason}</Text>
-                      </View>
-                      <Text style={styles.chevron}>›</Text>
-                    </Pressable>
-                  ))
+                <Text style={styles.priorityHeading}>오늘 먼저 먹으면 좋은 것</Text>
+                {featuredPriority ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => openEdit(featuredPriority)}
+                    style={styles.priorityRow}>
+                    <View style={styles.priorityCopy}>
+                      <Text style={styles.foodName}>{featuredPriority.name}</Text>
+                      <Text style={styles.reason}>{featuredPriority.reason}</Text>
+                    </View>
+                  </Pressable>
                 ) : (
-                  <Text style={styles.emptyText}>먼저 먹을 재료가 없어요. 새 재료를 추가해 보세요.</Text>
+                  <Text style={styles.priorityEmpty}>먼저 먹을 재료가 없어요. 새 재료를 추가해 보세요.</Text>
                 )}
-              </View>
-
-              <View style={styles.quickAddRow}>
-                <Pressable accessibilityRole="button" onPress={() => openCreate('leftover')} style={styles.quickAddButton}>
-                  <Text style={styles.quickAddTitle}>남은 음식</Text>
-                  <Text style={styles.quickAddHint}>지금 바로 기록</Text>
-                </Pressable>
-                <Pressable accessibilityRole="button" onPress={() => openCreate('ingredient')} style={styles.quickAddButton}>
-                  <Text style={styles.quickAddTitle}>직접 추가</Text>
-                  <Text style={styles.quickAddHint}>식재료 하나씩</Text>
-                </Pressable>
               </View>
 
               <View style={styles.sectionHeader}>
@@ -231,7 +211,7 @@ export default function HomeScreen() {
               <RecipeCard
                 title="치킨마요 덮밥"
                 meta="15분 · 1인분"
-                reason="남은 치킨과 계란을 오늘 쓰기 좋아요"
+                reason="남은 치킨을 오늘 쓰기 좋아요"
                 onPress={() => {
                   const chicken = inventory.find((item) => item.id === 'leftover-chicken');
                   if (chicken) consumeItem(chicken);
@@ -372,14 +352,9 @@ export default function HomeScreen() {
 function RecipeCard({ title, meta, reason, onPress }: { title: string; meta: string; reason: string; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.recipeCard}>
-      <View style={styles.recipeVisual}>
-        <Text style={styles.recipeVisualText}>오늘의 메뉴</Text>
-      </View>
       <View style={styles.recipeCopy}>
-        <View style={styles.recipeHeading}>
-          <Text style={styles.recipeTitle}>{title}</Text>
-          <Text style={styles.recipeMeta}>{meta}</Text>
-        </View>
+        <Text style={styles.recipeTitle}>{title}</Text>
+        <Text style={styles.recipeMeta}>{meta}</Text>
         <Text style={styles.recipeReason}>{reason}</Text>
       </View>
     </Pressable>
@@ -387,39 +362,29 @@ function RecipeCard({ title, meta, reason, onPress }: { title: string; meta: str
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FAF8F4' },
-  app: { flex: 1, backgroundColor: '#FAF8F4' },
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  app: { flex: 1, backgroundColor: '#FFFFFF' },
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF8F4' },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 116 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 116 },
+  header: { marginBottom: 104 },
   inventoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   eyebrow: { fontSize: 15, lineHeight: 22, color: '#6C7168' },
   title: { marginTop: 4, fontSize: 25, lineHeight: 34, fontWeight: '700', color: '#1D211C', letterSpacing: -0.5 },
-  iconButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  iconText: { fontSize: 24, color: '#2F6B4F' },
   sectionTitle: { fontSize: 18, lineHeight: 26, fontWeight: '700', color: '#1D211C' },
-  priorityCard: { marginTop: 12, borderRadius: 20, backgroundColor: '#FFFFFF', paddingHorizontal: 16 },
-  priorityRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center' },
-  priorityDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E9E6DF' },
-  priorityIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#E4F0E7', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  priorityCard: { borderRadius: 20, backgroundColor: '#E4F0E7', paddingHorizontal: 20, paddingVertical: 22 },
+  priorityHeading: { fontSize: 18, lineHeight: 26, fontWeight: '700', color: '#1D211C' },
+  priorityRow: { minHeight: 56, justifyContent: 'flex-end' },
   priorityCopy: { flex: 1 },
   foodName: { fontSize: 15, lineHeight: 22, fontWeight: '700', color: '#1D211C' },
   reason: { marginTop: 2, fontSize: 12, lineHeight: 17, color: '#6C7168' },
-  chevron: { fontSize: 28, color: '#6C7168' },
-  quickAddRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
-  quickAddButton: { flex: 1, minHeight: 74, borderRadius: 20, padding: 16, backgroundColor: '#F1EEE7', justifyContent: 'center' },
-  quickAddTitle: { color: '#1D211C', fontSize: 14, lineHeight: 20, fontWeight: '700' },
-  quickAddHint: { marginTop: 2, color: '#6C7168', fontSize: 12, lineHeight: 17 },
+  priorityEmpty: { paddingTop: 16, color: '#6C7168', fontSize: 14, lineHeight: 21 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 12 },
   link: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: '#2F6B4F' },
-  recipeCard: { borderRadius: 20, backgroundColor: '#FFFFFF', overflow: 'hidden', marginBottom: 12 },
-  recipeVisual: { height: 86, padding: 16, justifyContent: 'flex-end', backgroundColor: '#E4F0E7' },
-  recipeVisualText: { color: '#2F6B4F', fontSize: 13, fontWeight: '600' },
-  recipeCopy: { padding: 16 },
-  recipeHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
-  recipeTitle: { flex: 1, fontSize: 17, lineHeight: 24, fontWeight: '700', color: '#1D211C' },
-  recipeMeta: { fontSize: 12, lineHeight: 17, color: '#6C7168' },
-  recipeReason: { marginTop: 6, fontSize: 13, lineHeight: 18, color: '#2F6B4F' },
+  recipeCard: { borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D5E0D6', marginBottom: 12 },
+  recipeCopy: { paddingHorizontal: 20, paddingVertical: 20 },
+  recipeTitle: { fontSize: 18, lineHeight: 26, fontWeight: '700', color: '#1D211C' },
+  recipeMeta: { marginTop: 8, fontSize: 12, lineHeight: 18, color: '#6C7168' },
+  recipeReason: { marginTop: 8, fontSize: 12, lineHeight: 18, color: '#2F6B4F' },
   optionRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   option: { flex: 1, minHeight: 44, borderRadius: 14, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
   optionSelected: { backgroundColor: '#E4F0E7', borderWidth: 1, borderColor: '#2F6B4F' },
