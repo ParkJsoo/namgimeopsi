@@ -8,7 +8,7 @@
 - 목적: AI 신뢰 UX와 모바일 제품 설계/구현 역량을 보여 주는 공개 포트폴리오 프로젝트
 - GitHub: <https://github.com/ParkJsoo/namgimeopsi>
 - 로컬 경로: `/Users/jeongsoopark/develop/namgimeopsi`
-- 구현 상태: Expo TypeScript 앱에서 로컬 영속 재고 CRUD와 남은 음식 등록·필터를 구현했다. 재고 이벤트·날짜 상태·레시피 점수화 순수 함수와 단위 테스트를 추가했다. 홈은 Figma 첫 화면을 기준으로 코드 우선으로 재정렬했으며, Product Design 시각 QA는 브라우저 연결이 없어 대기 중이다. Supabase·AI 영수증·실기기 기능은 아직 시작하지 않았다.
+- 구현 상태: Expo TypeScript 앱에서 로컬 영속 재고 CRUD와 남은 음식 등록·필터를 구현했다. 재고 이벤트·날짜 상태·레시피 점수화 순수 함수와 단위 테스트를 추가했다. 홈은 Figma 첫 화면을 기준으로 코드 우선으로 재정렬했고, Chrome에서 375 × 812 Product Design QA와 핵심 홈 상호작용을 완료했다. Supabase·AI 영수증·실기기 기능은 아직 시작하지 않았다.
 
 ## Locked decisions
 
@@ -39,12 +39,14 @@
   - Foundations 안에 공용 `Status chip`, `Recipe card`, `Bottom navigation` 컴포넌트 구성
   - App Screens에 온보딩, 영수증 검수, 레시피 상세, 완료/차감 흐름을 구성하고 검증
 - 주의: Figma MCP는 Starter 호출 한도 오류가 재발했다. MCP 한도를 우회하지 않는다. 다음 화면부터는 Product Design으로 코드·상호작용을 먼저 만들고 시각 QA를 마친 뒤, Figma MCP가 다시 가능할 때 편집 가능한 디자인으로 반영한다. Figma 데스크톱 수동 조작은 짧은 시각 확인 또는 마지막 보정에만 쓴다.
+- 이번 QA에서 Figma MCP는 상태 확인으로 한 번만 호출했다. 개인 팀은 Starter `View` 권한으로 확인됐고, 파일 수정·추가 호출은 하지 않았다.
 
 ## Implementation status
 
 - Expo Router 기반 TypeScript 앱을 루트에 초기화했다.
 - `AsyncStorage` 기반 로컬 저장소로 재고를 분리했다. 직접 추가, 수정, 제외, `다 먹음` 처리 후에도 앱을 다시 열면 재고 상태가 유지된다.
-- 홈은 Figma `App Screens > Frame 1`의 밀도에 맞춰 인사·단일 우선 소비 카드·`오늘의 한 끼`·설명 가능한 메뉴 카드로 정렬했다. 상호작용은 기존 재고 수정·메뉴 소비·냉장고 이동을 유지한다.
+- 홈은 Figma `App Screens > Frame 1`의 밀도에 맞춰 인사·단일 우선 소비 카드·`오늘의 한 끼`·설명 가능한 메뉴 카드로 정렬했다. 375 × 812 Chrome 캡처와 우선 소비 수정·레시피 차감 확인·냉장고 탭·빠른 추가 상호작용 QA를 마쳤고 증거는 `docs/qa-artifacts/`와 루트 `design-qa.md`에 기록했다.
+- 레시피 카드의 `다 먹음`은 플랫폼별 `Alert`에 의존하지 않는다. 공통 확인 시트에서 항목·생활 단위·홈/재고 반영 결과를 먼저 보여 주고, 사용자가 `다 먹음`을 선택한 뒤에만 로컬 재고에서 제거한다.
 - 남은 음식은 식재료와 별도 종류로 등록하며, 기본값은 `냉장 · 1인분 · 지금 보관 시작 · 내일까지 권장`이다. 냉장고 화면은 보관 위치와 전체/남은 음식/오늘 권장 필터를 제공한다.
 - `src/features/domain/`에 다음 순수 함수를 구현했다. 아직 화면·저장소에 연결하지 않았으므로, 현재 메뉴 카드는 시드 데이터 기반이다.
   - `inventory-events.ts`: 입고·소비·수정·폐기 이벤트로 잔량을 계산하며, 단위 혼용과 초과 소비를 막는다.
@@ -52,17 +54,16 @@
   - `recipe-ranking.ts`: 재료 충족도 + 임박 재료 활용 - 부족 재료 - 조리 시간으로 점수화하고, 부족 재료가 2개를 넘는 메뉴를 제외한 상위 3개와 추천 근거를 반환한다.
 - Supabase CLI 설정·`supabase/` 디렉터리·클라이언트 패키지·환경 파일·`EXPO_PUBLIC_SUPABASE_*` 값은 아직 없다. 프로젝트 선택과 URL/anon key가 준비되기 전에는 백엔드 연동을 시작하지 않는다.
 - 이 단계는 백엔드 연동 전 UI·상태 전환 검증용이다. 기기 로컬에만 저장되며 계정·다른 기기와 동기화되지 않는다.
-- Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. Expo 웹 서버는 기동됐지만 현재 Codex에 연결 가능한 브라우저가 없어 화면 캡처·비교는 `blocked` 상태다.
+- Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. 이번 세션에서 in-app Browser는 연결되지 않았지만 Chrome 연결로 화면 캡처·비교와 동작 QA를 완료했다. Figma 원본 프레임의 새 캡처는 의도적으로 보류했으므로 정확한 픽셀 차이는 Figma MCP가 다시 가능한 세션에서 보완한다.
 - 검증 완료: `npm run test:domain`, `npx tsc --noEmit`, `npx expo export --platform web`.
 
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. Product Design 흐름으로 기존 Expo 화면을 먼저 구현·검증한다. Codex의 in-app Browser 또는 지원 Chrome 연결을 준비해 `design-qa.md`의 375×812 비교를 통과시킨다.
-3. Figma MCP 호출 가능 여부를 한 번 확인한다. 한도 오류면 더 호출하지 않고, 검증을 통과한 코드 화면을 이후 편집 가능한 Figma 디자인으로 반영한다.
-4. Figma가 막힌 경우 Supabase 프로젝트를 준비한다. 프로젝트 선택과 `EXPO_PUBLIC_SUPABASE_URL`·`EXPO_PUBLIC_SUPABASE_ANON_KEY`가 있어야 로컬 저장소를 데이터 모델·익명 로그인·시드 데이터 저장으로 대체한다.
-5. 자격 증명이 준비되기 전에는 도메인 함수를 앱의 시드 재고와 메뉴 카드에 연결하고, 조리/섭취 완료 시 이벤트 원장을 남기도록 UI를 확장한다.
-6. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
+2. Figma MCP가 다시 가능한 세션에서 `App Screens > Frame 1`을 새로 캡처해 `docs/qa-artifacts/01-home-375x812.png`와 픽셀 단위로 대조한다. 한도 오류면 재시도하지 않는다.
+3. Supabase 프로젝트를 준비한다. 프로젝트 선택과 `EXPO_PUBLIC_SUPABASE_URL`·`EXPO_PUBLIC_SUPABASE_ANON_KEY`가 있어야 로컬 저장소를 데이터 모델·익명 로그인·시드 데이터 저장으로 대체한다.
+4. 자격 증명이 준비되기 전에는 도메인 함수를 앱의 시드 재고와 메뉴 카드에 연결하고, 조리/섭취 완료 시 이벤트 원장을 남기도록 UI를 확장한다.
+5. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
 
 ## Last verified repository state
 
@@ -72,4 +73,4 @@
   - `c8b1ad2 feat: persist inventory and add leftover flow`
   - `5a09183 docs: update implementation handoff`
 - `9b8924c feat: add tested inventory domain logic`
-- 위 커밋은 아직 원격에 푸시하지 않았다. Figma 변경은 외부 디자인 파일에 반영됐고, 이번 문서 상태 갱신은 별도 작은 커밋으로 기록한다.
+- 위 커밋은 아직 원격에 푸시하지 않았다. Figma 변경은 외부 디자인 파일에 반영됐고, 이번 홈 QA·차감 확인 시트·문서 갱신은 별도 작은 커밋으로 기록한다.

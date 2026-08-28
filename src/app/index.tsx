@@ -81,6 +81,7 @@ export default function HomeScreen() {
   const { items: inventory, isReady, add, update, remove } = useInventory();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingConsumption, setPendingConsumption] = useState<InventoryItem | null>(null);
   const [draft, setDraft] = useState<InventoryDraft>(blankDraft);
   const [selectedStorage, setSelectedStorage] = useState<StoragePlace>('냉장');
   const [inventoryFilter, setInventoryFilter] = useState<'all' | 'leftover' | 'today'>('all');
@@ -155,13 +156,7 @@ export default function HomeScreen() {
   };
 
   const consumeItem = (item: InventoryItem) => {
-    Alert.alert(`${item.name}을(를) 다 먹었나요?`, '완료하면 목록에서 사라집니다.', [
-      { text: '아직 있어요', style: 'cancel' },
-      {
-        text: '다 먹음',
-        onPress: () => remove(item.id),
-      },
-    ]);
+    setPendingConsumption(item);
   };
 
   if (!isReady) {
@@ -345,6 +340,40 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        animationType="slide"
+        transparent
+        visible={pendingConsumption !== null}
+        onRequestClose={() => setPendingConsumption(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.confirmSheet}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>다 드셨나요?</Text>
+            <Text style={styles.confirmCopy}>
+              {pendingConsumption
+                ? `${pendingConsumption.name} ${pendingConsumption.quantity}을(를) 다 먹음으로 표시할까요?`
+                : ''}
+            </Text>
+            <Text style={styles.safetyNote}>완료하면 홈의 우선 소비 목록과 냉장고 재고에서 사라져요.</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                if (pendingConsumption) remove(pendingConsumption.id);
+                setPendingConsumption(null);
+              }}
+              style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>다 먹음</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setPendingConsumption(null)}
+              style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>아직 있어요</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -416,13 +445,17 @@ const styles = StyleSheet.create({
   fabText: { color: '#FFFFFF', fontSize: 29, lineHeight: 31, fontWeight: '300' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(29,33,28,0.35)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#FAF8F4', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34 },
+  confirmSheet: { backgroundColor: '#FAF8F4', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34 },
   sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#C9C7C1', marginBottom: 18 },
   sheetTitle: { fontSize: 22, lineHeight: 30, fontWeight: '700', color: '#1D211C', marginBottom: 20 },
   fieldLabel: { marginTop: 14, marginBottom: 6, color: '#4D554B', fontSize: 13, lineHeight: 18, fontWeight: '600' },
   input: { minHeight: 52, borderRadius: 14, paddingHorizontal: 14, backgroundColor: '#FFFFFF', color: '#1D211C', fontSize: 15 },
   safetyNote: { marginTop: 14, color: '#6C7168', fontSize: 12, lineHeight: 17 },
+  confirmCopy: { color: '#4D554B', fontSize: 15, lineHeight: 22 },
   primaryButton: { minHeight: 52, marginTop: 20, borderRadius: 14, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center' },
   primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  secondaryButton: { minHeight: 44, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
+  secondaryButtonText: { color: '#2F6B4F', fontSize: 14, fontWeight: '600' },
   deleteButton: { minHeight: 44, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   deleteButtonText: { color: '#B73D32', fontSize: 14, fontWeight: '600' },
 });

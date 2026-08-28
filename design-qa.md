@@ -1,38 +1,35 @@
 # Design QA — Home screen
 
-**Findings**
+**Result: passed (implementation capture and interaction QA)**
 
-- [P0] Browser-rendered implementation capture is unavailable.
-  Location: Expo web home screen.
-  Evidence: the Figma desktop canvas provides the selected 375 × 812 home-screen reference, but the Product Design browser runtime reported no available browser while the Expo web server was running on port 8082.
-  Impact: the implementation cannot be compared at the same viewport, so typography, vertical rhythm, color application, content cropping, and the bottom navigation cannot be visually verified.
-  Fix: enable an in-app Browser or connect a supported Chrome browser in Codex, then capture the Expo web screen at the reference viewport and run a visual comparison.
+The Expo web implementation was captured at the requested 375 × 812 viewport with the seeded home state. The accepted screenshots are in [`docs/qa-artifacts/`](docs/qa-artifacts/).
 
-**Open Questions**
+## Findings
 
-- The source reference is the existing `App Screens > Frame 1` Figma canvas. It is a 375 × 812 static composition, while the app retains scrollable content and functional inventory editing.
+- [Resolved P1] The first recipe card previously called the platform `Alert`, which did not surface a confirmation on Expo web. It now opens a shared bottom sheet before the user can mark the ingredient as eaten. The sheet identifies the item and quantity, explains that home and inventory will update, and offers `다 먹음` and `아직 있어요`.
+- [Limit] This run captured the implementation only. The Figma source frame was not recaptured because the task constrained Figma MCP to one availability check; the source visual truth remains `App Screens > Frame 1` described in the project handoff. Exact pixel-diff comparison therefore remains for a future session with a newly captured Figma frame.
 
-**Implementation Checklist**
+## Required Fidelity Surfaces
 
-1. Capture the selected Figma frame at 375 × 812.
-2. Capture Expo web at the same viewport with the seeded home state.
-3. Compare the two images, fixing any P0/P1/P2 differences.
-4. Test the priority-card edit action, recipe action, inventory tab, and quick-add action.
+- Fonts and typography: passed visual inspection of the captured implementation. The display title, section heading, body copy, and compact metadata retain a clear hierarchy at 375px width.
+- Spacing and layout rhythm: passed visual inspection. The large header-to-priority-card gap, 20px screen gutter, stacked recipe cards, and bottom navigation remain readable without cropping.
+- Colors and visual tokens: passed visual inspection. The rendered screen uses the documented white, pale green, brand green, and soft border colors (`#FFFFFF`, `#E4F0E7`, `#2F6B4F`, `#D5E0D6`).
+- Image quality and asset fidelity: passed; the source and implementation surface use no image assets.
+- Copy and content: passed. The seeded priority and featured-menu copy is legible and preserves the recommendation reasons.
 
-**Required Fidelity Surfaces**
+## Interaction Checklist
 
-- Fonts and typography: blocked pending rendered capture.
-- Spacing and layout rhythm: blocked pending rendered capture.
-- Colors and visual tokens: code uses the documented `#FFFFFF`, `#E4F0E7`, `#2F6B4F`, and `#D5E0D6` tokens; visual verification is blocked.
-- Image quality and asset fidelity: no image assets appear in the selected home reference.
-- Copy and content: source and implementation use the same featured-menu and priority language where updated; visual verification is blocked.
+1. Home, seeded state — passed. [`01-home-375x812.png`](docs/qa-artifacts/01-home-375x812.png)
+2. Priority-card edit action — passed. Selecting `남은 치킨` opens the editable inventory sheet with item, quantity, storage, recommended-use timing, and remove action. [`02-priority-edit-sheet.png`](docs/qa-artifacts/02-priority-edit-sheet.png)
+3. Recipe action — passed after the P1 fix. Selecting `치킨마요 덮밥` opens the explicit consumption confirmation sheet; the destructive `다 먹음` option was not selected during QA. [`03-recipe-completion-confirmation.png`](docs/qa-artifacts/03-recipe-completion-confirmation.png)
+4. Inventory tab — passed. The navigation updates the active tab and shows storage, type, and timing filters with seeded inventory. [`04-inventory-tab.png`](docs/qa-artifacts/04-inventory-tab.png)
+5. Quick add — passed. The central `+` opens the direct-add sheet with ingredient/leftover selection and date-language guidance. [`05-quick-add-sheet.png`](docs/qa-artifacts/05-quick-add-sheet.png)
 
-**Comparison metadata**
+## Comparison metadata
 
 - Source visual truth: Figma `남김없이 — Mobile App Design`, `App Screens > Frame 1`.
-- Implementation screenshot: unavailable.
+- Implementation screenshots: `docs/qa-artifacts/01` through `05`.
 - Target viewport: 375 × 812.
 - State: seeded inventory, home tab.
-- Full-view and focused-region comparison: unavailable because no supported browser was available.
-
-final result: blocked
+- Browser: connected Chrome; in-app Browser was unavailable in this session.
+- Figma MCP: one status check completed; no design file mutation or retry was made.
