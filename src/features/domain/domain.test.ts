@@ -1,6 +1,9 @@
 import { getConsumptionPriorityDate, getConsumptionStatus } from './date-status.ts';
 import { calculateRemainingQuantity, isDepleted } from './inventory-events.ts';
 import { rankRecipes, type Recipe } from './recipe-ranking.ts';
+import { getLiveRecipeRecommendations, projectAvailableFoods } from '../recipes/recommendations.ts';
+import { seedInventory } from '../inventory/seed.ts';
+import type { InventoryItem } from '../inventory/types.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -83,4 +86,35 @@ test('레시피는 임박 재료 활용, 부족 재료, 조리 시간을 근거�
   equal(recommendations[0]?.recipe.id, 'tofu-bowl', '임박 재료를 더 쓰는 메뉴 우선');
   equal(recommendations[0]?.missingIngredients.length, 0, '기본 보유 재료는 부족 재료에서 제외');
   assert(recommendations[0]?.reason.includes('두부와 애호박'), '추천 이유에 임박 재료가 포함되어야 합니다');
+});
+
+test('재고를 기반으로 한 홈 추천은 최대 3개를 반환하고 소비 상태에 따라 정렬한다', () => {
+  const recommendations = getLiveRecipeRecommendations(seedInventory, '2026-08-29');
+
+  equal(recommendations.length, 3, '홈 추천 상한');
+  equal(recommendations[0]?.recipe.id, 'tofu-zucchini-bowl', '임박 재료 두 개를 쓰는 메뉴 우선');
+  equal(recommendations[1]?.recipe.id, 'chicken-mayo-bowl', '오늘 권장 남은 음식 메뉴');
+  equal(recommendations[0]?.missingIngredients.length, 0, '기본 보유 재료는 부족 재료에서 제외');
+});
+
+test('추천 입력은 표시용 날짜나 보관 시작일을 소비 상태로 추정하지 않는다', () => {
+  const baseItem: InventoryItem = {
+    id: 'tofu-display-only',
+    name: '두부',
+    quantity: '1모',
+    storage: '냉장',
+    recommendedUseBy: '오늘',
+    reason: '표시용 문구',
+    kind: 'ingredient',
+    storageStartedAt: '오늘',
+    createdAt: '2026-08-29T10:00:00.000Z',
+  };
+  const foods = projectAvailableFoods(
+    [baseItem, { ...baseItem, id: 'tofu-soon', recommendedUseByAt: '2026-08-31' }],
+    '2026-08-29',
+  );
+
+  equal(foods.length, 1, '동일 식재료 lot는 하나의 추천 입력으로 투영');
+  equal(foods[0]?.consumptionStatus, 'soon', 'ISO 권장일이 있는 lot의 상태를 우선');
+  equal(projectAvailableFoods([baseItem], '2026-08-29')[0]?.consumptionStatus, 'unknown', '표시 문구만 있으면 확인 필요');
 });

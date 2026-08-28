@@ -11,6 +11,8 @@ export type InventoryItem = {
   storage: StoragePlace;
   /** 사용자가 정한 편의용 날짜 표현이며 식품 안전을 보장하지 않는다. */
   recommendedUseBy: string;
+  /** 추천 로직에만 쓰는 ISO 날짜. 없으면 포장 표기일만 보조 기준으로 사용한다. */
+  recommendedUseByAt?: string;
   reason: string;
   kind: InventoryKind;
   purchasedAt?: string;
