@@ -7,7 +7,7 @@ The Expo web implementation was captured at the requested 375 × 812 viewport wi
 ## Findings
 
 - [Resolved P1] The first recipe card previously called the platform `Alert`, which did not surface a confirmation on Expo web. It now opens a shared bottom sheet before the user can mark the ingredient as eaten. The sheet identifies the item and quantity, explains that home and inventory will update, and offers `다 먹음` and `아직 있어요`.
-- [Limit] This run captured the implementation only. The Figma source frame was not recaptured because the task constrained Figma MCP to one availability check; the source visual truth remains `App Screens > Frame 1` described in the project handoff. Exact pixel-diff comparison therefore remains for a future session with a newly captured Figma frame.
+- [Blocker] This run captured the implementation only. The Figma source frame could not be rendered in connected Chrome because WebGL is unavailable; the captured failure is [`06-figma-webgl-blocked.png`](docs/qa-artifacts/06-figma-webgl-blocked.png). Figma MCP was not retried, per the one-check constraint. Exact pixel-diff comparison needs a WebGL-enabled capture surface or a short Figma desktop visual check in a later session.
 
 ## Required Fidelity Surfaces
 
@@ -32,4 +32,4 @@ The Expo web implementation was captured at the requested 375 × 812 viewport wi
 - Target viewport: 375 × 812.
 - State: seeded inventory, home tab.
 - Browser: connected Chrome; in-app Browser was unavailable in this session.
-- Figma MCP: one status check completed; no design file mutation or retry was made.
+- Figma MCP: one status check completed; no design file mutation or retry was made. The Chrome Figma canvas is blocked by WebGL.
