@@ -9,6 +9,8 @@ export type Recipe = {
   cookMinutes: number;
   servings: number;
   ingredients: RecipeIngredient[];
+  /** 로컬 MVP에서 전량 소비 확인 대상으로 제안할 보유 재료. 수량 기반 차감은 이후 단계에서 추가한다. */
+  consumptionFoodNames?: string[];
 };
 
 export type AvailableFood = {
@@ -34,6 +36,14 @@ function normalizeFoodName(name: string) {
   return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
 }
 
+function withObjectParticle(label: string) {
+  const lastCharacter = [...label].at(-1);
+  if (!lastCharacter) return label;
+  const code = lastCharacter.codePointAt(0) ?? 0;
+  const hasFinalConsonant = code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 !== 0;
+  return `${label}${hasFinalConsonant ? '을' : '를'}`;
+}
+
 function buildReason(soonToUseIngredients: string[], missingIngredients: string[], cookMinutes: number) {
   const soonToUseLabel =
     soonToUseIngredients.length === 1
@@ -42,7 +52,7 @@ function buildReason(soonToUseIngredients: string[], missingIngredients: string[
         ? soonToUseIngredients.join('와 ')
         : `${soonToUseIngredients.slice(0, 2).join(', ')} 등`;
   const usage = soonToUseIngredients.length
-    ? `${soonToUseLabel}을(를) 먼저 쓰기 좋아요.`
+    ? `${withObjectParticle(soonToUseLabel)} 먼저 쓰기 좋아요.`
     : '보유 재료를 활용하기 좋아요.';
   const missing = missingIngredients.length ? ` 부족 재료: ${missingIngredients.join(', ')}.` : ' 부족 재료가 없어요.';
   return `${usage}${missing} ${cookMinutes}분 예상이에요.`;

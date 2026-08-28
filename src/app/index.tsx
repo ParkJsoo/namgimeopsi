@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import type { RecipeRecommendation } from '@/features/domain/recipe-ranking';
 import { useInventory } from '@/features/inventory/use-inventory';
 import {
   blankDraft,
@@ -20,6 +21,13 @@ import {
   type InventoryItem,
   type StoragePlace,
 } from '@/features/inventory/types';
+import { RecipeCard } from '@/features/recipes/RecipeCard';
+import { RecipeCompletionSheet } from '@/features/recipes/RecipeCompletionSheet';
+import { getLiveRecipeRecommendations } from '@/features/recipes/recommendations';
+
+function normalizeFoodName(name: string) {
+  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
+}
 
 function statusTone(item: InventoryItem) {
   if (getFoodStatus(item) === 'today') return styles.statusToday;
@@ -78,10 +86,10 @@ function KindPicker({
 
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'home' | 'inventory'>('home');
-  const { items: inventory, isReady, add, update, remove } = useInventory();
+  const { items: inventory, isReady, add, update, remove, consumeAll } = useInventory();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [pendingConsumption, setPendingConsumption] = useState<InventoryItem | null>(null);
+  const [pendingRecommendation, setPendingRecommendation] = useState<RecipeRecommendation | null>(null);
   const [draft, setDraft] = useState<InventoryDraft>(blankDraft);
   const [selectedStorage, setSelectedStorage] = useState<StoragePlace>('냉장');
   const [inventoryFilter, setInventoryFilter] = useState<'all' | 'leftover' | 'today'>('all');
@@ -91,6 +99,16 @@ export default function HomeScreen() {
     [inventory],
   );
   const featuredPriority = priorityItems[0];
+
+  const recommendations = useMemo(() => getLiveRecipeRecommendations(inventory), [inventory]);
+
+  const pendingConsumedItems = useMemo(() => {
+    if (!pendingRecommendation) return [];
+    const consumptionFoodNames = pendingRecommendation.recipe.consumptionFoodNames ?? pendingRecommendation.availableIngredients;
+    return consumptionFoodNames
+      .map((foodName) => inventory.find((item) => normalizeFoodName(item.name) === normalizeFoodName(foodName)))
+      .filter((item): item is InventoryItem => item !== undefined);
+  }, [inventory, pendingRecommendation]);
 
   const visibleInventory = useMemo(
     () =>
@@ -155,8 +173,8 @@ export default function HomeScreen() {
     ]);
   };
 
-  const consumeItem = (item: InventoryItem) => {
-    setPendingConsumption(item);
+  const openRecipeCompletion = (recommendation: RecipeRecommendation) => {
+    setPendingRecommendation(recommendation);
   };
 
   if (!isReady) {
@@ -203,22 +221,20 @@ export default function HomeScreen() {
                 <Text style={styles.sectionTitle}>오늘의 한 끼</Text>
                 <Text style={styles.link}>모두 보기</Text>
               </View>
-              <RecipeCard
-                title="치킨마요 덮밥"
-                meta="15분 · 1인분"
-                reason="남은 치킨을 오늘 쓰기 좋아요"
-                onPress={() => {
-                  const chicken = inventory.find((item) => item.id === 'leftover-chicken');
-                  if (chicken) consumeItem(chicken);
-                  else openCreate('leftover');
-                }}
-              />
-              <RecipeCard
-                title="애호박 두부덮밥"
-                meta="15분 · 1인분"
-                reason="두부와 애호박을 이틀 안에 쓰기 좋아요"
-                onPress={() => setActiveTab('inventory')}
-              />
+              {recommendations.length ? (
+                recommendations.map((recommendation) => (
+                  <RecipeCard
+                    key={recommendation.recipe.id}
+                    recommendation={recommendation}
+                    onPress={() => openRecipeCompletion(recommendation)}
+                  />
+                ))
+              ) : (
+                <View style={styles.recipeEmpty}>
+                  <Text style={styles.recipeEmptyTitle}>추천할 메뉴가 아직 없어요</Text>
+                  <Text style={styles.recipeEmptyCopy}>재료를 추가하면 오늘 만들기 좋은 메뉴를 최대 3개 보여 드릴게요.</Text>
+                </View>
+              )}
             </>
           ) : (
             <>
@@ -341,52 +357,23 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      <Modal
-        animationType="slide"
-        transparent
-        visible={pendingConsumption !== null}
-        onRequestClose={() => setPendingConsumption(null)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.confirmSheet}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>다 드셨나요?</Text>
-            <Text style={styles.confirmCopy}>
-              {pendingConsumption
-                ? `${pendingConsumption.name} ${pendingConsumption.quantity}을(를) 다 먹음으로 표시할까요?`
-                : ''}
-            </Text>
-            <Text style={styles.safetyNote}>완료하면 홈의 우선 소비 목록과 냉장고 재고에서 사라져요.</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                if (pendingConsumption) remove(pendingConsumption.id);
-                setPendingConsumption(null);
-              }}
-              style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>다 먹음</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setPendingConsumption(null)}
-              style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>아직 있어요</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+      <RecipeCompletionSheet
+        recommendation={pendingRecommendation}
+        consumedItems={pendingConsumedItems}
+        onConfirm={() => {
+          if (!pendingRecommendation || !pendingConsumedItems.length) return;
+          consumeAll(
+            pendingConsumedItems.map((item) => item.id),
+            {
+              recipeId: pendingRecommendation.recipe.id,
+              recipeTitle: pendingRecommendation.recipe.title,
+            },
+          );
+          setPendingRecommendation(null);
+        }}
+        onClose={() => setPendingRecommendation(null)}
+      />
     </SafeAreaView>
-  );
-}
-
-function RecipeCard({ title, meta, reason, onPress }: { title: string; meta: string; reason: string; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.recipeCard}>
-      <View style={styles.recipeCopy}>
-        <Text style={styles.recipeTitle}>{title}</Text>
-        <Text style={styles.recipeMeta}>{meta}</Text>
-        <Text style={styles.recipeReason}>{reason}</Text>
-      </View>
-    </Pressable>
   );
 }
 
@@ -409,11 +396,9 @@ const styles = StyleSheet.create({
   priorityEmpty: { paddingTop: 16, color: '#6C7168', fontSize: 14, lineHeight: 21 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 12 },
   link: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: '#2F6B4F' },
-  recipeCard: { borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D5E0D6', marginBottom: 12 },
-  recipeCopy: { paddingHorizontal: 20, paddingVertical: 20 },
-  recipeTitle: { fontSize: 18, lineHeight: 26, fontWeight: '700', color: '#1D211C' },
-  recipeMeta: { marginTop: 8, fontSize: 12, lineHeight: 18, color: '#6C7168' },
-  recipeReason: { marginTop: 8, fontSize: 12, lineHeight: 18, color: '#2F6B4F' },
+  recipeEmpty: { borderRadius: 20, borderWidth: 1, borderStyle: 'dashed', borderColor: '#D5E0D6', padding: 20 },
+  recipeEmptyTitle: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: '#1D211C' },
+  recipeEmptyCopy: { marginTop: 6, fontSize: 13, lineHeight: 19, color: '#6C7168' },
   optionRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   option: { flex: 1, minHeight: 44, borderRadius: 14, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
   optionSelected: { backgroundColor: '#E4F0E7', borderWidth: 1, borderColor: '#2F6B4F' },
@@ -445,17 +430,13 @@ const styles = StyleSheet.create({
   fabText: { color: '#FFFFFF', fontSize: 29, lineHeight: 31, fontWeight: '300' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(29,33,28,0.35)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#FAF8F4', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34 },
-  confirmSheet: { backgroundColor: '#FAF8F4', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34 },
   sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#C9C7C1', marginBottom: 18 },
   sheetTitle: { fontSize: 22, lineHeight: 30, fontWeight: '700', color: '#1D211C', marginBottom: 20 },
   fieldLabel: { marginTop: 14, marginBottom: 6, color: '#4D554B', fontSize: 13, lineHeight: 18, fontWeight: '600' },
   input: { minHeight: 52, borderRadius: 14, paddingHorizontal: 14, backgroundColor: '#FFFFFF', color: '#1D211C', fontSize: 15 },
   safetyNote: { marginTop: 14, color: '#6C7168', fontSize: 12, lineHeight: 17 },
-  confirmCopy: { color: '#4D554B', fontSize: 15, lineHeight: 22 },
   primaryButton: { minHeight: 52, marginTop: 20, borderRadius: 14, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center' },
   primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  secondaryButton: { minHeight: 44, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
-  secondaryButtonText: { color: '#2F6B4F', fontSize: 14, fontWeight: '600' },
   deleteButton: { minHeight: 44, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   deleteButtonText: { color: '#B73D32', fontSize: 14, fontWeight: '600' },
 });

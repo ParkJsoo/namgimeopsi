@@ -13,6 +13,7 @@ export const seedRecipes: Recipe[] = [
     cookMinutes: 15,
     servings: 1,
     ingredients: [{ foodName: '두부' }, { foodName: '애호박' }, { foodName: '간장' }, { foodName: '밥' }],
+    consumptionFoodNames: ['두부', '애호박'],
   },
   {
     id: 'chicken-mayo-bowl',
@@ -20,6 +21,7 @@ export const seedRecipes: Recipe[] = [
     cookMinutes: 15,
     servings: 1,
     ingredients: [{ foodName: '남은 치킨' }, { foodName: '밥' }, { foodName: '마요네즈' }],
+    consumptionFoodNames: ['남은 치킨'],
   },
   {
     id: 'dumpling-egg-soup',
@@ -27,6 +29,7 @@ export const seedRecipes: Recipe[] = [
     cookMinutes: 20,
     servings: 2,
     ingredients: [{ foodName: '냉동만두' }, { foodName: '계란' }, { foodName: '대파' }, { foodName: '소금' }],
+    consumptionFoodNames: ['냉동만두'],
   },
   {
     id: 'egg-soup',
@@ -34,6 +37,7 @@ export const seedRecipes: Recipe[] = [
     cookMinutes: 10,
     servings: 1,
     ingredients: [{ foodName: '계란' }, { foodName: '대파' }, { foodName: '소금' }],
+    consumptionFoodNames: ['계란'],
   },
   {
     id: 'tofu-salad',
@@ -41,5 +45,6 @@ export const seedRecipes: Recipe[] = [
     cookMinutes: 10,
     servings: 1,
     ingredients: [{ foodName: '두부' }, { foodName: '상추' }, { foodName: '참깨' }, { foodName: '간장' }],
+    consumptionFoodNames: ['두부'],
   },
 ];

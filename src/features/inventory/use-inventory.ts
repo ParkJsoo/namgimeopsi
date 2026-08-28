@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   completeInventoryItems,
   getActiveInventoryItems,
+  mergeMissingRecommendationDates,
   parseInventoryState,
   type CompletionContext,
 } from './ledger';
@@ -37,8 +38,11 @@ export function useInventory() {
         const saved = await AsyncStorage.getItem(storageKey);
         const legacySaved = saved ? null : await AsyncStorage.getItem(legacyStorageKey);
         const parsed = saved || legacySaved ? parseInventoryState(JSON.parse(saved ?? legacySaved ?? 'null')) : null;
-        const nextState = parsed ?? { version: 2, items: seedInventory, events: [] };
-        if (!saved && parsed) void AsyncStorage.setItem(storageKey, JSON.stringify(nextState));
+        const nextState = mergeMissingRecommendationDates(
+          parsed ?? { version: 2, items: seedInventory, events: [] },
+          seedInventory,
+        );
+        if (!saved || nextState !== parsed) void AsyncStorage.setItem(storageKey, JSON.stringify(nextState));
         if (isMounted) setState(nextState);
       } catch {
         if (isMounted) setState({ version: 2, items: seedInventory, events: [] });

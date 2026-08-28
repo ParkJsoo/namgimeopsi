@@ -55,3 +55,17 @@ export function parseInventoryState(value: unknown): InventoryState | null {
   }
   return null;
 }
+
+/** 기존 시드 재고에는 표시 문구만 저장돼 있었으므로, 같은 lot ID에 한해 ISO 추천일 메타데이터를 보완한다. */
+export function mergeMissingRecommendationDates(state: InventoryState, seedItems: InventoryItem[]): InventoryState {
+  const seedItemsById = new Map(seedItems.map((item) => [item.id, item]));
+  let hasChanges = false;
+  const items = state.items.map((item) => {
+    const seedItem = seedItemsById.get(item.id);
+    if (item.recommendedUseByAt || !seedItem?.recommendedUseByAt) return item;
+    hasChanges = true;
+    return { ...item, recommendedUseByAt: seedItem.recommendedUseByAt };
+  });
+
+  return hasChanges ? { ...state, items } : state;
+}

@@ -3,7 +3,12 @@ import { calculateRemainingQuantity, isDepleted } from './inventory-events.ts';
 import { rankRecipes, type Recipe } from './recipe-ranking.ts';
 import { getLiveRecipeRecommendations, projectAvailableFoods } from '../recipes/recommendations.ts';
 import { seedInventory } from '../inventory/seed.ts';
-import { completeInventoryItems, getActiveInventoryItems, parseInventoryState } from '../inventory/ledger.ts';
+import {
+  completeInventoryItems,
+  getActiveInventoryItems,
+  mergeMissingRecommendationDates,
+  parseInventoryState,
+} from '../inventory/ledger.ts';
 import type { InventoryItem, InventoryState } from '../inventory/types.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -96,6 +101,8 @@ test('재고를 기반으로 한 홈 추천은 최대 3개를 반환하고 소�
   equal(recommendations[0]?.recipe.id, 'tofu-zucchini-bowl', '임박 재료 두 개를 쓰는 메뉴 우선');
   equal(recommendations[1]?.recipe.id, 'chicken-mayo-bowl', '오늘 권장 남은 음식 메뉴');
   equal(recommendations[0]?.missingIngredients.length, 0, '기본 보유 재료는 부족 재료에서 제외');
+  assert(recommendations[1]?.reason.startsWith('남은 치킨을 먼저'), '추천 이유는 자연스러운 조사로 표시');
+  equal(getLiveRecipeRecommendations([], '2026-08-29').length, 0, '보유 재료가 없으면 메뉴를 제안하지 않음');
 });
 
 test('추천 입력은 표시용 날짜나 보관 시작일을 소비 상태로 추정하지 않는다', () => {
@@ -143,4 +150,11 @@ test('저장소 상태는 v1 배열을 v2 원장 상태로 안전하게 이관�
   equal(migrated?.events.length, 0, '기존 원장은 빈 배열');
   equal(parseInventoryState({ version: 2, items: seedInventory, events: [] })?.items.length, seedInventory.length, 'v2 상태 유지');
   equal(parseInventoryState({ version: 1, items: seedInventory }), null, '알 수 없는 상태 거부');
+
+  const legacyItems = seedInventory.map(({ recommendedUseByAt: _recommendedUseByAt, ...item }) => item);
+  const enriched = mergeMissingRecommendationDates(
+    { version: 2, items: legacyItems, events: [] },
+    seedInventory,
+  );
+  equal(enriched.items.find((item) => item.id === 'leftover-chicken')?.recommendedUseByAt, '2026-08-29', '시드 lot ISO 날짜 보완');
 });

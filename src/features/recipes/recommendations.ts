@@ -50,5 +50,7 @@ export function getLiveRecipeRecommendations(
   items: InventoryItem[],
   referenceDate: Date | string = new Date(),
 ): RecipeRecommendation[] {
-  return rankRecipes(seedRecipes, projectAvailableFoods(items, referenceDate), basePantryFoodNames);
+  return rankRecipes(seedRecipes, projectAvailableFoods(items, referenceDate), basePantryFoodNames).filter(
+    (recommendation) => recommendation.availableIngredients.length > 0,
+  );
 }
