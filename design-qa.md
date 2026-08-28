@@ -24,6 +24,7 @@ The Expo web implementation was captured at the requested 375 × 812 viewport wi
 3. Recipe action — passed after the P1 fix. Selecting `치킨마요 덮밥` opens the explicit consumption confirmation sheet; the destructive `다 먹음` option was not selected during QA. [`03-recipe-completion-confirmation.png`](docs/qa-artifacts/03-recipe-completion-confirmation.png)
 4. Inventory tab — passed. The navigation updates the active tab and shows storage, type, and timing filters with seeded inventory. [`04-inventory-tab.png`](docs/qa-artifacts/04-inventory-tab.png)
 5. Quick add — passed. The central `+` opens the direct-add sheet with ingredient/leftover selection and date-language guidance. [`05-quick-add-sheet.png`](docs/qa-artifacts/05-quick-add-sheet.png)
+6. Live meal completion — passed for visible state and cancellation. Live cards are derived from active inventory; selecting a card shows the recipe-specific whole-consumption targets and `아직 있어요` closes without changing state. [`07-live-recipe-completion-sheet.png`](docs/qa-artifacts/07-live-recipe-completion-sheet.png) Pure tests cover the confirmed `consume-all` event, active-inventory projection, and recommendation refresh input.
 
 ## Comparison metadata
 

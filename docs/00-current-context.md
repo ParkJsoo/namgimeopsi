@@ -8,7 +8,7 @@
 - 목적: AI 신뢰 UX와 모바일 제품 설계/구현 역량을 보여 주는 공개 포트폴리오 프로젝트
 - GitHub: <https://github.com/ParkJsoo/namgimeopsi>
 - 로컬 경로: `/Users/jeongsoopark/develop/namgimeopsi`
-- 구현 상태: Expo TypeScript 앱에서 로컬 영속 재고 CRUD와 남은 음식 등록·필터를 구현했다. 재고 이벤트·날짜 상태·레시피 점수화 순수 함수와 단위 테스트를 추가했다. 홈은 Figma 첫 화면을 기준으로 코드 우선으로 재정렬했고, Chrome에서 375 × 812 Product Design QA와 핵심 홈 상호작용을 완료했다. Supabase·AI 영수증·실기기 기능은 아직 시작하지 않았다.
+- 구현 상태: Expo TypeScript 앱에서 로컬 영속 재고 CRUD와 남은 음식 등록·필터를 구현했다. 재고 이벤트·날짜 상태·레시피 점수화 순수 함수가 실제 홈 추천·전량 소비 흐름에 연결됐고, Chrome에서 375 × 812 핵심 홈 상호작용을 확인했다. Supabase·AI 영수증·실기기 기능은 아직 시작하지 않았다.
 
 ## Locked decisions
 
@@ -46,7 +46,8 @@
 - Expo Router 기반 TypeScript 앱을 루트에 초기화했다.
 - `AsyncStorage` 기반 로컬 저장소로 재고를 분리했다. 직접 추가, 수정, 제외, `다 먹음` 처리 후에도 앱을 다시 열면 재고 상태가 유지된다.
 - 홈은 Figma `App Screens > Frame 1`의 밀도에 맞춰 인사·단일 우선 소비 카드·`오늘의 한 끼`·설명 가능한 메뉴 카드로 정렬했다. 375 × 812 Chrome 캡처와 우선 소비 수정·레시피 차감 확인·냉장고 탭·빠른 추가 상호작용 QA를 마쳤고 증거는 `docs/qa-artifacts/`와 루트 `design-qa.md`에 기록했다.
-- 레시피 카드의 `다 먹음`은 플랫폼별 `Alert`에 의존하지 않는다. 공통 확인 시트에서 항목·생활 단위·홈/재고 반영 결과를 먼저 보여 주고, 사용자가 `다 먹음`을 선택한 뒤에만 로컬 재고에서 제거한다.
+- 홈의 메뉴 카드는 더 이상 하드코딩되지 않는다. 5개 검수 레시피의 작은 로컬 카탈로그를 현재 활성 재고에 점수화해 최대 3개를 표시하며, 추천 근거와 부족 재료를 함께 보여 준다. 소비 우선도는 ISO 권장 섭취일만 사용하며 표시 문구·구매일·보관 시작일로 안전 상태를 추정하지 않는다.
+- 레시피 완료 시트는 레시피와 전량 소비 대상으로 명시된 보유 재료·생활 단위를 먼저 보여 준다. 사용자가 `다 먹음으로 기록`을 누르면 `consume-all` 로컬 원장을 남기고 활성 재고에서만 제외한다. 수량을 일부만 쓴 경우에는 자동 차감하지 않고 현재의 재고 수정으로 처리한다. 원장은 AsyncStorage v2에 보존되며 기존 v1 재고 배열은 이관한다.
 - 남은 음식은 식재료와 별도 종류로 등록하며, 기본값은 `냉장 · 1인분 · 지금 보관 시작 · 내일까지 권장`이다. 냉장고 화면은 보관 위치와 전체/남은 음식/오늘 권장 필터를 제공한다.
 - `src/features/domain/`에 다음 순수 함수를 구현했다. 아직 화면·저장소에 연결하지 않았으므로, 현재 메뉴 카드는 시드 데이터 기반이다.
   - `inventory-events.ts`: 입고·소비·수정·폐기 이벤트로 잔량을 계산하며, 단위 혼용과 초과 소비를 막는다.
@@ -60,10 +61,11 @@
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. WebGL이 가능한 Browser 또는 복구된 Computer Use 연결로 `App Screens > Frame 1`을 새로 캡처해 `docs/qa-artifacts/01-home-375x812.png`와 픽셀 단위로 대조한다. Figma MCP는 재시도하지 않는다.
-3. Supabase 프로젝트를 준비한다. 프로젝트 선택과 `EXPO_PUBLIC_SUPABASE_URL`·`EXPO_PUBLIC_SUPABASE_ANON_KEY`가 있어야 로컬 저장소를 데이터 모델·익명 로그인·시드 데이터 저장으로 대체한다.
-4. 자격 증명이 준비되기 전에는 도메인 함수를 앱의 시드 재고와 메뉴 카드에 연결하고, 조리/섭취 완료 시 이벤트 원장을 남기도록 UI를 확장한다.
-5. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
+2. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
+3. 영수증 모의 AI 검수형 입고를 로컬 fixture로 구현한다. `빠른 추가 선택 → 분석 상태 → 확인됨/확인 필요 검수 → 사용자 확정 뒤 입고 이벤트` 순서를 지키고, 확정 전에는 재고를 바꾸지 않는다.
+4. Supabase 프로젝트를 준비한다. 프로젝트 선택과 `EXPO_PUBLIC_SUPABASE_URL`·`EXPO_PUBLIC_SUPABASE_ANON_KEY`가 있어야 로컬 저장소를 데이터 모델·익명 로그인·시드 데이터 저장으로 대체한다.
+5. 수량 기반 부분 차감과 조리 세션은 영수증 검수 흐름 뒤 별도 작업으로 추가한다. 그전에는 전량 소비와 수동 수량 수정만 지원한다.
+6. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
 
 ## Last verified repository state
 
@@ -73,4 +75,8 @@
   - `c8b1ad2 feat: persist inventory and add leftover flow`
   - `5a09183 docs: update implementation handoff`
 - `9b8924c feat: add tested inventory domain logic`
-- 위 커밋은 아직 원격에 푸시하지 않았다. Figma 변경은 외부 디자인 파일에 반영됐고, 이번 홈 QA·차감 확인 시트·문서 갱신은 별도 작은 커밋으로 기록한다.
+- 현재 작업 브랜치 `feat/live-recommendations`의 로컬 커밋:
+  - `c165a3e feat(recipes): add live recommendation selector`
+  - `d3afd5d feat(inventory): persist consumption events`
+  - `8375bbf feat(home): render live meals and completion flow`
+- 위 커밋은 아직 원격에 푸시하지 않았다. Figma 변경은 외부 디자인 파일에 반영됐고, 이번 문서 갱신도 별도 작은 커밋으로 기록한다.
