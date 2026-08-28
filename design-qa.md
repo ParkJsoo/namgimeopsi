@@ -7,7 +7,7 @@ The Expo web implementation was captured at the requested 375 × 812 viewport wi
 ## Findings
 
 - [Resolved P1] The first recipe card previously called the platform `Alert`, which did not surface a confirmation on Expo web. It now opens a shared bottom sheet before the user can mark the ingredient as eaten. The sheet identifies the item and quantity, explains that home and inventory will update, and offers `다 먹음` and `아직 있어요`.
-- [Blocker] This run captured the implementation only. The Figma source frame could not be rendered in connected Chrome because WebGL is unavailable; the captured failure is [`06-figma-webgl-blocked.png`](docs/qa-artifacts/06-figma-webgl-blocked.png). Figma MCP was not retried, per the one-check constraint. Exact pixel-diff comparison needs a WebGL-enabled capture surface or a short Figma desktop visual check in a later session.
+- [Blocker] This run captured the implementation only. The Figma source frame could not be rendered in connected Chrome because WebGL is unavailable; the captured failure is [`06-figma-webgl-blocked.png`](docs/qa-artifacts/06-figma-webgl-blocked.png). A Figma Desktop fallback was also unavailable because the local Computer Use connection could not start, so no desktop screenshot was captured. Figma MCP was not retried, per the one-check constraint. Exact pixel-diff comparison needs a WebGL-enabled capture surface or a restored Computer Use connection in a later session.
 
 ## Required Fidelity Surfaces
 

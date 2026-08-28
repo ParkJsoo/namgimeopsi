@@ -54,13 +54,13 @@
   - `recipe-ranking.ts`: 재료 충족도 + 임박 재료 활용 - 부족 재료 - 조리 시간으로 점수화하고, 부족 재료가 2개를 넘는 메뉴를 제외한 상위 3개와 추천 근거를 반환한다.
 - Supabase CLI 설정·`supabase/` 디렉터리·클라이언트 패키지·환경 파일·`EXPO_PUBLIC_SUPABASE_*` 값은 아직 없다. 프로젝트 선택과 URL/anon key가 준비되기 전에는 백엔드 연동을 시작하지 않는다.
 - 이 단계는 백엔드 연동 전 UI·상태 전환 검증용이다. 기기 로컬에만 저장되며 계정·다른 기기와 동기화되지 않는다.
-- Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. 이번 세션에서 in-app Browser는 연결되지 않았지만 Chrome 연결로 구현 화면 캡처와 동작 QA를 완료했다. Figma 원본 프레임은 연결된 Chrome에서 WebGL을 지원하지 않아 열 수 없었고, 차단 증거는 `docs/qa-artifacts/06-figma-webgl-blocked.png`에 있다. Figma MCP는 재호출하지 않았다.
+- Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. 이번 세션에서 in-app Browser는 연결되지 않았지만 Chrome 연결로 구현 화면 캡처와 동작 QA를 완료했다. Figma 원본 프레임은 연결된 Chrome에서 WebGL을 지원하지 않아 열 수 없었고, 차단 증거는 `docs/qa-artifacts/06-figma-webgl-blocked.png`에 있다. Figma Desktop fallback도 Computer Use 연결 시작 실패로 캡처하지 못했다. Figma MCP는 재호출하지 않았다.
 - 검증 완료: `npm run test:domain`, `npx tsc --noEmit`, `npx expo export --platform web`.
 
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. WebGL이 가능한 Browser 또는 짧은 Figma 데스크톱 시각 확인으로 `App Screens > Frame 1`을 새로 캡처해 `docs/qa-artifacts/01-home-375x812.png`와 픽셀 단위로 대조한다. Figma MCP는 재시도하지 않는다.
+2. WebGL이 가능한 Browser 또는 복구된 Computer Use 연결로 `App Screens > Frame 1`을 새로 캡처해 `docs/qa-artifacts/01-home-375x812.png`와 픽셀 단위로 대조한다. Figma MCP는 재시도하지 않는다.
 3. Supabase 프로젝트를 준비한다. 프로젝트 선택과 `EXPO_PUBLIC_SUPABASE_URL`·`EXPO_PUBLIC_SUPABASE_ANON_KEY`가 있어야 로컬 저장소를 데이터 모델·익명 로그인·시드 데이터 저장으로 대체한다.
 4. 자격 증명이 준비되기 전에는 도메인 함수를 앱의 시드 재고와 메뉴 카드에 연결하고, 조리/섭취 완료 시 이벤트 원장을 남기도록 UI를 확장한다.
 5. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
