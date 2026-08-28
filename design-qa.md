@@ -29,7 +29,7 @@ The Expo web implementation was captured at the requested 375 × 812 viewport wi
 ## Comparison metadata
 
 - Source visual truth: Figma `남김없이 — Mobile App Design`, `App Screens > Frame 1`.
-- Implementation screenshots: `docs/qa-artifacts/01` through `05`.
+- Implementation screenshots: `docs/qa-artifacts/01` through `05`, and `07`.
 - Target viewport: 375 × 812.
 - State: seeded inventory, home tab.
 - Browser: connected Chrome; in-app Browser was unavailable in this session.
