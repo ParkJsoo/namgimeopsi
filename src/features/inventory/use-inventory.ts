@@ -1,10 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import {
+  completeInventoryItems,
+  getActiveInventoryItems,
+  parseInventoryState,
+  type CompletionContext,
+} from './ledger';
 import { seedInventory } from './seed';
-import type { InventoryDraft, InventoryItem } from './types';
+import type { InventoryDraft, InventoryItem, InventoryState } from './types';
 
-const storageKey = 'namgimeopsi.inventory.v1';
+const storageKey = 'namgimeopsi.inventory.v2';
+const legacyStorageKey = 'namgimeopsi.inventory.v1';
 
 function createItem(draft: InventoryDraft): InventoryItem {
   const isLeftover = draft.kind === 'leftover';
@@ -19,7 +26,7 @@ function createItem(draft: InventoryDraft): InventoryItem {
 }
 
 export function useInventory() {
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [state, setState] = useState<InventoryState>({ version: 2, items: [], events: [] });
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -28,10 +35,13 @@ export function useInventory() {
     async function hydrate() {
       try {
         const saved = await AsyncStorage.getItem(storageKey);
-        const parsed = saved ? (JSON.parse(saved) as InventoryItem[]) : seedInventory;
-        if (isMounted) setItems(Array.isArray(parsed) ? parsed : seedInventory);
+        const legacySaved = saved ? null : await AsyncStorage.getItem(legacyStorageKey);
+        const parsed = saved || legacySaved ? parseInventoryState(JSON.parse(saved ?? legacySaved ?? 'null')) : null;
+        const nextState = parsed ?? { version: 2, items: seedInventory, events: [] };
+        if (!saved && parsed) void AsyncStorage.setItem(storageKey, JSON.stringify(nextState));
+        if (isMounted) setState(nextState);
       } catch {
-        if (isMounted) setItems(seedInventory);
+        if (isMounted) setState({ version: 2, items: seedInventory, events: [] });
       } finally {
         if (isMounted) setIsReady(true);
       }
@@ -43,30 +53,45 @@ export function useInventory() {
     };
   }, []);
 
-  const commit = (nextItems: InventoryItem[]) => {
-    setItems(nextItems);
-    void AsyncStorage.setItem(storageKey, JSON.stringify(nextItems));
+  const commit = (nextState: InventoryState) => {
+    setState(nextState);
+    void AsyncStorage.setItem(storageKey, JSON.stringify(nextState));
   };
 
-  const add = (draft: InventoryDraft) => commit([createItem(draft), ...items]);
+  const add = (draft: InventoryDraft) => commit({ ...state, items: [createItem(draft), ...state.items] });
 
   const update = (id: string, draft: InventoryDraft) =>
     commit(
-      items.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              ...draft,
-              name: draft.name.trim(),
-              reason: '직접 수정한 재고예요.',
-              storageStartedAt:
-                draft.kind === 'leftover' ? item.storageStartedAt ?? '지금' : undefined,
-            }
-          : item,
-      ),
+      {
+        ...state,
+        items: state.items.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                ...draft,
+                name: draft.name.trim(),
+                reason: '직접 수정한 재고예요.',
+                storageStartedAt:
+                  draft.kind === 'leftover' ? item.storageStartedAt ?? '지금' : undefined,
+              }
+            : item,
+        ),
+      },
     );
 
-  const remove = (id: string) => commit(items.filter((item) => item.id !== id));
+  const remove = (id: string) => commit({ ...state, items: state.items.filter((item) => item.id !== id) });
 
-  return { items, isReady, add, update, remove };
+  const consumeAll = (itemIds: string[], context: Omit<CompletionContext, 'occurredAt'> = {}) =>
+    commit(completeInventoryItems(state, itemIds, { ...context, occurredAt: new Date().toISOString() }));
+
+  return {
+    items: getActiveInventoryItems(state),
+    allItems: state.items,
+    events: state.events,
+    isReady,
+    add,
+    update,
+    remove,
+    consumeAll,
+  };
 }

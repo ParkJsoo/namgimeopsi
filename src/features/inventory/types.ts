@@ -26,6 +26,27 @@ export type InventoryDraft = Pick<
   'name' | 'quantity' | 'storage' | 'recommendedUseBy' | 'kind'
 >;
 
+/**
+ * 숫자로 안전하게 환산할 수 없는 생활 단위는 그대로 남긴 채, 사용자가 전량 소비를 확정한 사실만 기록한다.
+ * Supabase 전환 시 `inventory_events`의 소비 이벤트로 매핑할 로컬 MVP 원장이다.
+ */
+export type InventoryLedgerEvent = {
+  id: string;
+  type: 'consume-all';
+  inventoryItemId: string;
+  foodName: string;
+  quantityLabel: string;
+  occurredAt: string;
+  recipeId?: string;
+  recipeTitle?: string;
+};
+
+export type InventoryState = {
+  version: 2;
+  items: InventoryItem[];
+  events: InventoryLedgerEvent[];
+};
+
 export const blankDraft: InventoryDraft = {
   name: '',
   quantity: '1인분',
