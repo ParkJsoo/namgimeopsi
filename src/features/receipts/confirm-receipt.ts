@@ -6,6 +6,8 @@ export type ReceiptConfirmationContext = {
   occurredAt: string;
 };
 
+export type ReceiptConfirmationResult = 'confirmed' | 'already-confirmed' | 'failed';
+
 function isValidIncludedItem(item: ReceiptDraftItem) {
   return Boolean(item.name.trim() && item.quantity.trim());
 }
@@ -13,6 +15,12 @@ function isValidIncludedItem(item: ReceiptDraftItem) {
 export function canConfirmReceiptDraft(draft: ReceiptReviewDraft) {
   const includedItems = getIncludedReceiptItems(draft);
   return includedItems.length > 0 && includedItems.every(isValidIncludedItem);
+}
+
+export function isReceiptDraftAlreadyConfirmed(state: InventoryState, draft: ReceiptReviewDraft) {
+  return state.events.some(
+    (event) => event.type === 'intake' && event.source === 'receipt' && event.receiptId === draft.batchId,
+  );
 }
 
 /**
@@ -26,10 +34,7 @@ export function confirmReceiptDraft(
 ): InventoryState {
   if (!canConfirmReceiptDraft(draft)) return state;
 
-  const alreadyConfirmed = state.events.some(
-    (event) => event.type === 'intake' && event.source === 'receipt' && event.receiptId === draft.batchId,
-  );
-  if (alreadyConfirmed) return state;
+  if (isReceiptDraftAlreadyConfirmed(state, draft)) return state;
 
   const includedItems = getIncludedReceiptItems(draft);
   const items = includedItems.map<InventoryItem>((item) => ({

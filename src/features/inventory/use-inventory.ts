@@ -10,7 +10,11 @@ import {
 } from './ledger';
 import { seedInventory } from './seed';
 import type { InventoryDraft, InventoryItem, InventoryState } from './types';
-import { confirmReceiptDraft } from '../receipts/confirm-receipt';
+import {
+  confirmReceiptDraft,
+  isReceiptDraftAlreadyConfirmed,
+  type ReceiptConfirmationResult,
+} from '../receipts/confirm-receipt';
 import type { ReceiptReviewDraft } from '../receipts/types';
 
 const storageKey = 'namgimeopsi.inventory.v2';
@@ -90,17 +94,19 @@ export function useInventory() {
   const consumeAll = (itemIds: string[], context: Omit<CompletionContext, 'occurredAt'> = {}) =>
     commit(completeInventoryItems(state, itemIds, { ...context, occurredAt: new Date().toISOString() }));
 
-  /** 저장에 성공한 뒤에만 true를 반환하므로 완료 화면은 이 결과 뒤에 열 수 있다. */
-  const confirmReceipt = async (draft: ReceiptReviewDraft) => {
+  /** 저장 결과를 구분해, 완료·중복·오류를 사용자에게 각각 알릴 수 있게 한다. */
+  const confirmReceipt = async (draft: ReceiptReviewDraft): Promise<ReceiptConfirmationResult> => {
+    if (isReceiptDraftAlreadyConfirmed(state, draft)) return 'already-confirmed';
+
     const nextState = confirmReceiptDraft(state, draft, { occurredAt: new Date().toISOString() });
-    if (nextState === state) return false;
+    if (nextState === state) return 'failed';
 
     try {
       await AsyncStorage.setItem(storageKey, JSON.stringify(nextState));
       setState(nextState);
-      return true;
+      return 'confirmed';
     } catch {
-      return false;
+      return 'failed';
     }
   };
 

@@ -11,7 +11,7 @@ import {
 } from '../inventory/ledger.ts';
 import type { InventoryItem, InventoryState } from '../inventory/types.ts';
 import { receiptReviewFixture } from '../receipts/fixture.ts';
-import { canConfirmReceiptDraft, confirmReceiptDraft } from '../receipts/confirm-receipt.ts';
+import { canConfirmReceiptDraft, confirmReceiptDraft, isReceiptDraftAlreadyConfirmed } from '../receipts/confirm-receipt.ts';
 import { getReceiptReviewCounts, updateReceiptDraftItem } from '../receipts/review-draft.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -191,6 +191,7 @@ test('영수증은 사용자 확정 뒤에만 개별 lot와 입고 원장으로 
   equal(intakeEvent.rawName, '신선란 10구', '영수증 원문 보존');
   equal(intakeEvent.quantityLabel, '10개', '생활 단위 보존');
   equal(confirmed.items[0]?.createdAt, '2026-08-29T14:00:00.000Z', '확정 시각 보존');
+  equal(isReceiptDraftAlreadyConfirmed(confirmed, reviewed), true, '같은 영수증의 재확정을 식별');
   equal(confirmReceiptDraft(confirmed, reviewed, { occurredAt: '2026-08-29T15:00:00.000Z' }).events.length, 5, '같은 영수증은 중복 입고하지 않음');
 
   const invalid = updateReceiptDraftItem(receiptReviewFixture, 'tofu', { name: ' ' });

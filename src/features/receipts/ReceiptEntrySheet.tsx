@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 
 import type { InventoryDraft, StoragePlace } from '../inventory/types';
 import { receiptReviewFixture } from './fixture';
-import { canConfirmReceiptDraft } from './confirm-receipt';
+import { canConfirmReceiptDraft, type ReceiptConfirmationResult } from './confirm-receipt';
 import { getReceiptReviewCounts, updateReceiptDraftItem } from './review-draft';
 import type { ReceiptReviewDraft } from './types';
 
@@ -42,13 +42,14 @@ export function ReceiptEntrySheet({
   onClose: () => void;
   onDirectAdd: () => void;
   onLeftoverAdd: () => void;
-  onConfirm: (draft: ReceiptReviewDraft) => Promise<boolean>;
+  onConfirm: (draft: ReceiptReviewDraft) => Promise<ReceiptConfirmationResult>;
   onGoHome: () => void;
   onGoInventory: () => void;
 }) {
   const [stage, setStage] = useState<ReceiptStage>('choice');
   const [draft, setDraft] = useState<ReceiptReviewDraft>(createReviewDraft);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const counts = getReceiptReviewCounts(draft);
   const canConfirm = canConfirmReceiptDraft(draft) && !isSaving;
 
@@ -56,6 +57,7 @@ export function ReceiptEntrySheet({
     if (!visible) {
       setStage('choice');
       setIsSaving(false);
+      setSaveNotice(null);
     }
   }, [visible]);
 
@@ -67,15 +69,25 @@ export function ReceiptEntrySheet({
 
   const startReceiptReview = () => {
     setDraft(createReviewDraft());
+    setSaveNotice(null);
     setStage('analyzing');
   };
 
   const finishConfirmation = async () => {
     if (!canConfirm) return;
     setIsSaving(true);
-    const didConfirm = await onConfirm(draft);
+    setSaveNotice(null);
+    const result = await onConfirm(draft);
     setIsSaving(false);
-    if (didConfirm) setStage('complete');
+    if (result === 'confirmed') {
+      setStage('complete');
+      return;
+    }
+    setSaveNotice(
+      result === 'already-confirmed'
+        ? '이미 냉장고에 담은 영수증이에요. 재고 목록에서 확인해 주세요.'
+        : '저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
+    );
   };
 
   return (
@@ -119,6 +131,7 @@ export function ReceiptEntrySheet({
             <>
               <Text style={styles.title}>장 본 것 확인</Text>
               <Text style={styles.copy}>{counts.included}개를 찾았어요. AI가 읽은 결과를 맞는지만 확인해 주세요.</Text>
+              {saveNotice ? <Text accessibilityRole="alert" style={styles.saveNotice}>{saveNotice}</Text> : null}
               <ScrollView style={styles.reviewScroll} contentContainerStyle={styles.reviewContent} showsVerticalScrollIndicator={false}>
                 {(['high', 'needs-review'] as const).map((confidence) => {
                   const sectionItems = draft.items.filter((item) => item.confidence === confidence);
@@ -221,6 +234,7 @@ const styles = StyleSheet.create({
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#C9C7C1', marginBottom: 18 },
   title: { fontSize: 22, lineHeight: 30, fontWeight: '700', color: '#1D211C' },
   copy: { marginTop: 8, color: '#4D554B', fontSize: 14, lineHeight: 21 },
+  saveNotice: { marginTop: 10, borderRadius: 12, padding: 12, backgroundColor: '#FFF1DC', color: '#8A5311', fontSize: 13, lineHeight: 19, fontWeight: '600' },
   primaryButton: { minHeight: 52, marginTop: 20, borderRadius: 14, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center' },
   primaryButtonDisabled: { backgroundColor: '#A5BCA9' },
   primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
