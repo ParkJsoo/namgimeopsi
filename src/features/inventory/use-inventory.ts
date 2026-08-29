@@ -10,6 +10,8 @@ import {
 } from './ledger';
 import { seedInventory } from './seed';
 import type { InventoryDraft, InventoryItem, InventoryState } from './types';
+import { confirmReceiptDraft } from '../receipts/confirm-receipt';
+import type { ReceiptReviewDraft } from '../receipts/types';
 
 const storageKey = 'namgimeopsi.inventory.v2';
 const legacyStorageKey = 'namgimeopsi.inventory.v1';
@@ -88,6 +90,20 @@ export function useInventory() {
   const consumeAll = (itemIds: string[], context: Omit<CompletionContext, 'occurredAt'> = {}) =>
     commit(completeInventoryItems(state, itemIds, { ...context, occurredAt: new Date().toISOString() }));
 
+  /** 저장에 성공한 뒤에만 true를 반환하므로 완료 화면은 이 결과 뒤에 열 수 있다. */
+  const confirmReceipt = async (draft: ReceiptReviewDraft) => {
+    const nextState = confirmReceiptDraft(state, draft, { occurredAt: new Date().toISOString() });
+    if (nextState === state) return false;
+
+    try {
+      await AsyncStorage.setItem(storageKey, JSON.stringify(nextState));
+      setState(nextState);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   return {
     items: getActiveInventoryItems(state),
     allItems: state.items,
@@ -97,5 +113,6 @@ export function useInventory() {
     update,
     remove,
     consumeAll,
+    confirmReceipt,
   };
 }

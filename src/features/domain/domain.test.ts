@@ -11,6 +11,7 @@ import {
 } from '../inventory/ledger.ts';
 import type { InventoryItem, InventoryState } from '../inventory/types.ts';
 import { receiptReviewFixture } from '../receipts/fixture.ts';
+import { canConfirmReceiptDraft, confirmReceiptDraft } from '../receipts/confirm-receipt.ts';
 import { getReceiptReviewCounts, updateReceiptDraftItem } from '../receipts/review-draft.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -141,7 +142,9 @@ test('전량 소비는 활성 재고에서만 제외하고 생활 단위 원장�
   equal(completed.events.length, 1, '소비 원장 기록 수');
   equal(completed.events[0]?.type, 'consume-all', '전량 소비 이벤트 타입');
   equal(completed.events[0]?.quantityLabel, '1인분', '생활 단위 보존');
-  equal(completed.events[0]?.recipeId, 'chicken-mayo-bowl', '레시피 근거 보존');
+  const consumptionEvent = completed.events[0];
+  assert(consumptionEvent?.type === 'consume-all', '첫 이벤트는 소비 이벤트');
+  equal(consumptionEvent.recipeId, 'chicken-mayo-bowl', '레시피 근거 보존');
   equal(completeInventoryItems(completed, ['leftover-chicken'], { occurredAt: '2026-08-29T13:00:00.000Z' }).events.length, 1, '이미 소비한 lot는 중복 기록하지 않음');
 });
 
@@ -171,4 +174,26 @@ test('영수증 fixture는 원문과 검수 필요 상태를 보존하며, 제�
   equal(getReceiptReviewCounts(excluded).included, 5, '제외한 후보는 확정 개수에서 빠짐');
   equal(excluded.items.find((item) => item.id === 'pork')?.quantity, '500g', '생활 단위 수정 반영');
   equal(receiptReviewFixture.items.find((item) => item.id === 'pork')?.included, true, '원본 fixture는 변경하지 않음');
+});
+
+test('영수증은 사용자 확정 뒤에만 개별 lot와 입고 원장으로 한 번 저장한다', () => {
+  const initialState: InventoryState = { version: 2, items: seedInventory, events: [] };
+  const reviewed = updateReceiptDraftItem(receiptReviewFixture, 'pork', { included: false, quantity: '500g' });
+  equal(canConfirmReceiptDraft(reviewed), true, '포함한 모든 후보가 검수 가능한 경우에만 확정 가능');
+
+  const confirmed = confirmReceiptDraft(initialState, reviewed, { occurredAt: '2026-08-29T14:00:00.000Z' });
+  equal(initialState.items.length, seedInventory.length, '확정 전 원본 재고는 변경하지 않음');
+  equal(confirmed.items.length, seedInventory.length + 5, '선택한 후보만 개별 lot로 추가');
+  equal(confirmed.events.length, 5, '선택한 후보와 입고 원장이 일대일 대응');
+  equal(confirmed.events[0]?.type, 'intake', '입고 이벤트 타입');
+  const intakeEvent = confirmed.events[0];
+  assert(intakeEvent?.type === 'intake', '첫 이벤트는 입고 이벤트');
+  equal(intakeEvent.rawName, '신선란 10구', '영수증 원문 보존');
+  equal(intakeEvent.quantityLabel, '10개', '생활 단위 보존');
+  equal(confirmed.items[0]?.createdAt, '2026-08-29T14:00:00.000Z', '확정 시각 보존');
+  equal(confirmReceiptDraft(confirmed, reviewed, { occurredAt: '2026-08-29T15:00:00.000Z' }).events.length, 5, '같은 영수증은 중복 입고하지 않음');
+
+  const invalid = updateReceiptDraftItem(receiptReviewFixture, 'tofu', { name: ' ' });
+  equal(canConfirmReceiptDraft(invalid), false, '포함한 항목의 이름이 비면 확정 불가');
+  equal(confirmReceiptDraft(initialState, invalid, { occurredAt: '2026-08-29T14:00:00.000Z' }), initialState, '무효 검수는 상태를 바꾸지 않음');
 });

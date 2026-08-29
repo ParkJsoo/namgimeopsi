@@ -1,6 +1,10 @@
 import type { InventoryItem, InventoryLedgerEvent, InventoryState } from './types.ts';
 
-export type CompletionContext = Pick<InventoryLedgerEvent, 'occurredAt' | 'recipeId' | 'recipeTitle'>;
+export type CompletionContext = {
+  occurredAt: string;
+  recipeId?: string;
+  recipeTitle?: string;
+};
 
 function getConsumedItemIds(events: InventoryLedgerEvent[]) {
   return new Set(events.filter((event) => event.type === 'consume-all').map((event) => event.inventoryItemId));
