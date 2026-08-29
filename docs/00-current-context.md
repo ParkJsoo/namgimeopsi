@@ -89,4 +89,7 @@
   - `d095fa8 feat(receipts): add local receipt review fixture`
   - `284f577 feat(inventory): persist receipt intake batches`
   - `a947e23 feat(receipts): add fixture review flow`
+  - `5541368 fix(receipts): explain duplicate intake`
+  - `13f042f feat(inventory): sync anonymous inventory with supabase`
+  - `2999777 fix(supabase): grant inventory access to authenticated users`
 - 위 커밋은 아직 원격에 푸시하지 않았다. Figma 변경은 외부 디자인 파일에 반영됐고, 이번 문서 갱신도 별도 작은 커밋으로 기록한다.
