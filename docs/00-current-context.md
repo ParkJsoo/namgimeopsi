@@ -8,7 +8,7 @@
 - 목적: AI 신뢰 UX와 모바일 제품 설계/구현 역량을 보여 주는 공개 포트폴리오 프로젝트
 - GitHub: <https://github.com/ParkJsoo/namgimeopsi>
 - 로컬 경로: `/Users/jeongsoopark/develop/namgimeopsi`
-- 구현 상태: Expo TypeScript 앱에서 로컬 영속 재고 CRUD와 남은 음식 등록·필터를 구현했다. 재고 이벤트·날짜 상태·레시피 점수화 순수 함수가 실제 홈 추천·전량 소비 흐름에 연결됐고, Chrome에서 375 × 812 핵심 홈 상호작용을 확인했다. Supabase·AI 영수증·실기기 기능은 아직 시작하지 않았다.
+- 구현 상태: Expo TypeScript 앱에서 로컬 영속 재고 CRUD와 남은 음식 등록·필터를 구현했다. 재고 이벤트·날짜 상태·레시피 점수화 순수 함수가 실제 홈 추천·전량 소비 흐름에 연결됐고, Chrome에서 375 × 812 핵심 홈 상호작용을 확인했다. 실제 OCR 대신 로컬 영수증 fixture를 분석·검수·확정 입고하는 흐름까지 구현했다. Supabase·실기기 기능은 아직 시작하지 않았다.
 
 ## Locked decisions
 
@@ -48,6 +48,8 @@
 - 홈은 Figma `App Screens > Frame 1`의 밀도에 맞춰 인사·단일 우선 소비 카드·`오늘의 한 끼`·설명 가능한 메뉴 카드로 정렬했다. 375 × 812 Chrome 캡처와 우선 소비 수정·레시피 차감 확인·냉장고 탭·빠른 추가 상호작용 QA를 마쳤고 증거는 `docs/qa-artifacts/`와 루트 `design-qa.md`에 기록했다.
 - 홈의 메뉴 카드는 더 이상 하드코딩되지 않는다. 5개 검수 레시피의 작은 로컬 카탈로그를 현재 활성 재고에 점수화해 최대 3개를 표시하며, 추천 근거와 부족 재료를 함께 보여 준다. 소비 우선도는 ISO 권장 섭취일만 사용하며 표시 문구·구매일·보관 시작일로 안전 상태를 추정하지 않는다.
 - 레시피 완료 시트는 레시피와 전량 소비 대상으로 명시된 보유 재료·생활 단위를 먼저 보여 준다. 사용자가 `다 먹음으로 기록`을 누르면 `consume-all` 로컬 원장을 남기고 활성 재고에서만 제외한다. 수량을 일부만 쓴 경우에는 자동 차감하지 않고 현재의 재고 수정으로 처리한다. 원장은 AsyncStorage v2에 보존되며 기존 v1 재고 배열은 이관한다.
+- 빠른 추가는 `영수증으로 등록 / 남은 음식 등록 / 직접 추가`를 먼저 고른다. 영수증은 실제 OCR이 아님을 명시한 로컬 fixture를 짧게 분석한 뒤, 확인됨 4개와 `AI 추정 · 확인 필요` 2개를 원문과 함께 검수한다. 이름·생활 단위·보관 위치·권장 섭취 시점을 수정하거나 제외할 수 있고, 사용자가 `N개 냉장고에 담기`를 누르기 전에는 재고와 원장이 바뀌지 않는다.
+- 영수증 확정은 선택한 후보를 개별 재고 lot와 `intake` 원장 이벤트로 같은 로컬 상태에 기록한다. 원문·생활 단위·확정 시각·영수증 batch ID를 보존하며, 같은 batch ID의 재확정은 중복 입고하지 않는다. AsyncStorage 쓰기에 성공한 뒤에만 완료 화면으로 넘어간다.
 - 남은 음식은 식재료와 별도 종류로 등록하며, 기본값은 `냉장 · 1인분 · 지금 보관 시작 · 내일까지 권장`이다. 냉장고 화면은 보관 위치와 전체/남은 음식/오늘 권장 필터를 제공한다.
 - `src/features/domain/`에 다음 순수 함수를 구현했다. 레시피 점수화는 `src/features/recipes/recommendations.ts` 어댑터를 거쳐 활성 로컬 재고와 홈 카드에 연결됐다. 수량 기반 이벤트 함수는 부분 차감 단계까지 순수 함수·단위 테스트로만 유지한다.
   - `inventory-events.ts`: 입고·소비·수정·폐기 이벤트로 잔량을 계산하며, 단위 혼용과 초과 소비를 막는다.
@@ -55,13 +57,13 @@
   - `recipe-ranking.ts`: 재료 충족도 + 임박 재료 활용 - 부족 재료 - 조리 시간으로 점수화하고, 부족 재료가 2개를 넘는 메뉴를 제외한 상위 3개와 추천 근거를 반환한다.
 - Supabase CLI 설정·`supabase/` 디렉터리·클라이언트 패키지·환경 파일·`EXPO_PUBLIC_SUPABASE_*` 값은 아직 없다. 프로젝트 선택과 URL/anon key가 준비되기 전에는 백엔드 연동을 시작하지 않는다.
 - 이 단계는 백엔드 연동 전 UI·상태 전환 검증용이다. 기기 로컬에만 저장되며 계정·다른 기기와 동기화되지 않는다.
-- Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. 이번 세션에서 in-app Browser는 연결되지 않았지만 Chrome 연결로 구현 화면 캡처와 동작 QA를 완료했다. Figma 원본 프레임은 연결된 Chrome에서 WebGL을 지원하지 않아 열 수 없었고, 차단 증거는 `docs/qa-artifacts/06-figma-webgl-blocked.png`에 있다. Figma Desktop fallback도 Computer Use 연결 시작 실패로 캡처하지 못했다. Figma MCP는 재호출하지 않았다.
+- Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. 과거 Chrome 연결로 기존 홈 캡처와 동작 QA를 완료했다. 이번 영수증 흐름 구현 세션에는 연결 가능한 Browser/Chrome 인스턴스가 없어 375 × 812 시각 캡처를 추가하지 못했다. Figma 원본 프레임은 연결된 Chrome에서 WebGL을 지원하지 않아 열 수 없었고, 차단 증거는 `docs/qa-artifacts/06-figma-webgl-blocked.png`에 있다. Figma Desktop fallback도 Computer Use 연결 시작 실패로 캡처하지 못했다. Figma MCP는 재호출하지 않았다.
 - 검증 완료: `npm run test:domain`, `npx tsc --noEmit`, `npx expo export --platform web`.
 
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. 영수증 모의 AI 검수형 입고를 로컬 fixture로 구현한다. `빠른 추가 선택 → 분석 상태 → 확인됨/확인 필요 검수 → 사용자 확정 뒤 입고 이벤트` 순서를 지키고, 확정 전에는 재고를 바꾸지 않는다.
+2. Browser 또는 Chrome 연결 상태를 확인하고 375 × 812에서 새 빠른 추가와 영수증 분석·검수·취소 화면을 캡처 QA한다. 확정 버튼은 로컬 재고를 변경하므로 그 시점에만 사용자 확인을 받은 뒤 QA한다.
 3. Supabase 프로젝트를 준비한다. 프로젝트 선택과 `EXPO_PUBLIC_SUPABASE_URL`·`EXPO_PUBLIC_SUPABASE_ANON_KEY`가 있어야 로컬 저장소를 데이터 모델·익명 로그인·시드 데이터 저장으로 대체한다.
 4. 수량 기반 부분 차감과 조리 세션은 영수증 검수 흐름 뒤 별도 작업으로 추가한다. 그전에는 전량 소비와 수동 수량 수정만 지원한다.
 5. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
@@ -80,4 +82,8 @@
   - `d3afd5d feat(inventory): persist consumption events`
   - `8375bbf feat(home): render live meals and completion flow`
   - `f0fd1ca docs: record live recommendation demo`
+  - `bf91a64 docs: prepare receipt flow handoff`
+  - `d095fa8 feat(receipts): add local receipt review fixture`
+  - `284f577 feat(inventory): persist receipt intake batches`
+  - `a947e23 feat(receipts): add fixture review flow`
 - 위 커밋은 아직 원격에 푸시하지 않았다. Figma 변경은 외부 디자인 파일에 반영됐고, 이번 문서 갱신도 별도 작은 커밋으로 기록한다.

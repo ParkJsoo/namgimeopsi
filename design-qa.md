@@ -1,6 +1,6 @@
 # Design QA — Home screen
 
-**Result: passed (implementation capture and interaction QA)**
+**Result: passed for the previous home capture; receipt-entry regression capture pending**
 
 The Expo web implementation was captured at the requested 375 × 812 viewport with the seeded home state. The accepted screenshots are in [`docs/qa-artifacts/`](docs/qa-artifacts/).
 
@@ -23,7 +23,7 @@ The Expo web implementation was captured at the requested 375 × 812 viewport wi
 2. Priority-card edit action — passed. Selecting `남은 치킨` opens the editable inventory sheet with item, quantity, storage, recommended-use timing, and remove action. [`02-priority-edit-sheet.png`](docs/qa-artifacts/02-priority-edit-sheet.png)
 3. Recipe action — passed after the P1 fix. Selecting `치킨마요 덮밥` opens the explicit consumption confirmation sheet; the destructive `다 먹음` option was not selected during QA. [`03-recipe-completion-confirmation.png`](docs/qa-artifacts/03-recipe-completion-confirmation.png)
 4. Inventory tab — passed. The navigation updates the active tab and shows storage, type, and timing filters with seeded inventory. [`04-inventory-tab.png`](docs/qa-artifacts/04-inventory-tab.png)
-5. Quick add — passed. The central `+` opens the direct-add sheet with ingredient/leftover selection and date-language guidance. [`05-quick-add-sheet.png`](docs/qa-artifacts/05-quick-add-sheet.png)
+5. Quick add — previous direct-add capture passed. The central `+` now first opens `영수증으로 등록 / 남은 음식 등록 / 직접 추가`; its replacement capture and the receipt review capture are pending because no browser instance was connected in the latest implementation session. [`05-quick-add-sheet.png`](docs/qa-artifacts/05-quick-add-sheet.png)
 6. Live meal completion — passed for visible state and cancellation. Live cards are derived from active inventory; selecting a card shows the recipe-specific whole-consumption targets and `아직 있어요` closes without changing state. [`07-live-recipe-completion-sheet.png`](docs/qa-artifacts/07-live-recipe-completion-sheet.png) Pure tests cover the confirmed `consume-all` event, active-inventory projection, and recommendation refresh input.
 
 ## Comparison metadata
@@ -34,3 +34,4 @@ The Expo web implementation was captured at the requested 375 × 812 viewport wi
 - State: seeded inventory, home tab.
 - Browser: connected Chrome; in-app Browser was unavailable in this session.
 - Figma MCP: one status check completed; no design file mutation or retry was made. The Chrome Figma canvas is blocked by WebGL.
+- Current regression-capture scope: at 375 × 812, verify the new quick-add selection, the explicitly-labelled local-fixture analysis state, the grouped review view with `AI 추정 · 확인 필요`, and closing before confirmation. Do not press `N개 냉장고에 담기` in Browser QA without immediate user confirmation because it writes local inventory data.
