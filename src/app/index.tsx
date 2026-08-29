@@ -24,6 +24,7 @@ import {
 import { RecipeCard } from '@/features/recipes/RecipeCard';
 import { RecipeCompletionSheet } from '@/features/recipes/RecipeCompletionSheet';
 import { getLiveRecipeRecommendations } from '@/features/recipes/recommendations';
+import { ReceiptEntrySheet } from '@/features/receipts/ReceiptEntrySheet';
 
 function normalizeFoodName(name: string) {
   return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
@@ -86,8 +87,9 @@ function KindPicker({
 
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'home' | 'inventory'>('home');
-  const { items: inventory, isReady, add, update, remove, consumeAll } = useInventory();
+  const { items: inventory, isReady, add, update, remove, consumeAll, confirmReceipt } = useInventory();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [receiptEntryOpen, setReceiptEntryOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingRecommendation, setPendingRecommendation] = useState<RecipeRecommendation | null>(null);
   const [draft, setDraft] = useState<InventoryDraft>(blankDraft);
@@ -142,6 +144,11 @@ export default function HomeScreen() {
       kind: item.kind,
     });
     setEditorOpen(true);
+  };
+
+  const openCreateFromEntry = (kind: InventoryDraft['kind']) => {
+    setReceiptEntryOpen(false);
+    openCreate(kind);
   };
 
   const saveItem = () => {
@@ -288,7 +295,7 @@ export default function HomeScreen() {
             <Text style={[styles.tabIcon, activeTab === 'home' && styles.tabActive]}>⌂</Text>
             <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActive]}>홈</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => openCreate('ingredient')} style={styles.fab}>
+          <Pressable accessibilityRole="button" onPress={() => setReceiptEntryOpen(true)} style={styles.fab}>
             <Text style={styles.fabText}>＋</Text>
           </Pressable>
           <Pressable accessibilityRole="tab" onPress={() => setActiveTab('inventory')} style={styles.tab}>
@@ -372,6 +379,22 @@ export default function HomeScreen() {
           setPendingRecommendation(null);
         }}
         onClose={() => setPendingRecommendation(null)}
+      />
+
+      <ReceiptEntrySheet
+        visible={receiptEntryOpen}
+        onClose={() => setReceiptEntryOpen(false)}
+        onDirectAdd={() => openCreateFromEntry('ingredient')}
+        onLeftoverAdd={() => openCreateFromEntry('leftover')}
+        onConfirm={confirmReceipt}
+        onGoHome={() => {
+          setReceiptEntryOpen(false);
+          setActiveTab('home');
+        }}
+        onGoInventory={() => {
+          setReceiptEntryOpen(false);
+          setActiveTab('inventory');
+        }}
       />
     </SafeAreaView>
   );
