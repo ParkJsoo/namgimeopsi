@@ -57,16 +57,16 @@
   - `recipe-ranking.ts`: 재료 충족도 + 임박 재료 활용 - 부족 재료 - 조리 시간으로 점수화하고, 부족 재료가 2개를 넘는 메뉴를 제외한 상위 3개와 추천 근거를 반환한다.
 - Supabase `henry / 남김없이` Free 프로젝트를 서울(`ap-northeast-2`)에 만들었다. 새 테이블 자동 공개는 끄고 RLS 자동 설정을 켰으며, 익명 로그인을 활성화했다.
 - `@supabase/supabase-js`와 `react-native-url-polyfill`을 추가했다. 실제 URL과 publishable key는 Git에서 제외된 `.env`에만 있고, `.env.example`에는 키 이름만 둔다.
-- `supabase/migrations/20260829000000_inventory.sql`로 `inventory_items`, `inventory_events`와 사용자별 RLS 정책을 정의했고, 같은 SQL을 Supabase SQL Editor에서 실제 프로젝트에 반영했다. 앱은 익명 세션을 만든 뒤 자기 행만 읽고 쓴다.
+- `supabase/migrations/20260829000000_inventory.sql`로 `inventory_items`, `inventory_events`, 사용자별 RLS 정책과 `authenticated` 역할의 읽기·쓰기 권한을 정의했다. 테이블과 RLS 정책은 실제 프로젝트에 반영했지만, 권한 구문은 Chrome 제어 연결 문제로 아직 반영 전이다. 현재 앱의 원격 조회는 403으로 막히며 로컬 캐시로만 동작한다.
 - `useInventory`는 기존 v1/v2 AsyncStorage를 먼저 읽어 원격 저장소가 빈 익명 계정에 한 번 이관한다. 이후 원격 행을 기본값으로 쓰고, 동일 상태를 AsyncStorage에도 캐시한다. 영수증 확정은 원격 품목·입고 원장이 모두 성공한 뒤에만 완료한다.
-- 375 × 812 웹 앱은 익명 로그인·초기 동기화 뒤 정상 로드됐고 브라우저 콘솔 오류는 없었다(기존 RN `shadow*` 경고만 있음). 대시보드 행 수 재확인은 브라우저 연결이 작업 중 끊겨 다음 세션에서 한 번 더 확인한다.
+- 375 × 812 웹 앱은 익명 로그인·초기 동기화 뒤 정상 로드됐고 브라우저 콘솔 오류는 없었다(기존 RN `shadow*` 경고만 있음). 익명 로그인 API는 실제로 성공했고, 두 테이블 조회가 403인 것을 확인했다. 권한 반영 뒤 익명 세션으로 두 테이블 조회와 앱 동기화를 다시 검증한다.
 - Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. Chrome 375 × 812에서 빠른 추가·영수증 분석·검수·수정·제외·취소·확정 완료·보관 위치별 입고를 QA했고, 재확정 시 중복 입고 없이 `이미 냉장고에 담은 영수증이에요` 안내가 노출되는 것도 확인했다. Figma 원본 프레임은 연결된 Chrome에서 WebGL을 지원하지 않아 열 수 없었고, 차단 증거는 `docs/qa-artifacts/06-figma-webgl-blocked.png`에 있다. Figma Desktop fallback도 Computer Use 연결 시작 실패로 캡처하지 못했다. Figma MCP는 재호출하지 않았다.
 - 검증 완료: `npm run test:domain`, `npx tsc --noEmit`, `npx expo export --platform web`.
 
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. Supabase Dashboard에서 `inventory_items`·`inventory_events` 행과 익명 사용자가 생성됐는지 한 번 확인한다. 새 기기 동기화는 정식 계정 로그인 도입 뒤에 검증한다.
+2. Supabase SQL Editor에서 다음 권한을 실제 프로젝트에 반영한 뒤, 익명 세션으로 두 테이블 조회와 앱 동기화를 다시 검증한다: `grant select, insert, update, delete on public.inventory_items to authenticated;` 및 `grant select, insert, update, delete on public.inventory_events to authenticated;`. 새 기기 동기화는 정식 계정 로그인 도입 뒤에 검증한다.
 3. 영수증 품목·입고 원장 쓰기를 Edge Function/RPC로 묶어 원자적으로 처리하고, OCR 원본 이미지는 private Storage에 저장한다.
 4. 수량 기반 부분 차감과 조리 세션은 영수증 검수 흐름 뒤 별도 작업으로 추가한다. 그전에는 전량 소비와 수동 수량 수정만 지원한다.
 5. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.

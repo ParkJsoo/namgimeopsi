@@ -31,6 +31,9 @@ create table public.inventory_events (
   primary key (user_id, id)
 );
 
+grant select, insert, update, delete on public.inventory_items to authenticated;
+grant select, insert, update, delete on public.inventory_events to authenticated;
+
 alter table public.inventory_items enable row level security;
 alter table public.inventory_events enable row level security;
 
