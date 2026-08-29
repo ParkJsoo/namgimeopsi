@@ -10,6 +10,8 @@ import {
   parseInventoryState,
 } from '../inventory/ledger.ts';
 import type { InventoryItem, InventoryState } from '../inventory/types.ts';
+import { receiptReviewFixture } from '../receipts/fixture.ts';
+import { getReceiptReviewCounts, updateReceiptDraftItem } from '../receipts/review-draft.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -157,4 +159,16 @@ test('저장소 상태는 v1 배열을 v2 원장 상태로 안전하게 이관�
     seedInventory,
   );
   equal(enriched.items.find((item) => item.id === 'leftover-chicken')?.recommendedUseByAt, '2026-08-29', '시드 lot ISO 날짜 보완');
+});
+
+test('영수증 fixture는 원문과 검수 필요 상태를 보존하며, 제외 결과를 즉시 계산한다', () => {
+  equal(receiptReviewFixture.items.length, 6, '데모 영수증 후보 수');
+  equal(getReceiptReviewCounts(receiptReviewFixture).confirmed, 4, '확인됨 후보 수');
+  equal(getReceiptReviewCounts(receiptReviewFixture).needsReview, 2, '확인 필요 후보 수');
+  equal(receiptReviewFixture.items.find((item) => item.id === 'sesame-oil')?.rawName, '백설 진한참기름', 'AI 원문 보존');
+
+  const excluded = updateReceiptDraftItem(receiptReviewFixture, 'pork', { included: false, quantity: '500g' });
+  equal(getReceiptReviewCounts(excluded).included, 5, '제외한 후보는 확정 개수에서 빠짐');
+  equal(excluded.items.find((item) => item.id === 'pork')?.quantity, '500g', '생활 단위 수정 반영');
+  equal(receiptReviewFixture.items.find((item) => item.id === 'pork')?.included, true, '원본 fixture는 변경하지 않음');
 });
