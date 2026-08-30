@@ -9,6 +9,7 @@ import {
   mergeMissingRecommendationDates,
   parseInventoryState,
 } from '../inventory/ledger.ts';
+import { applyPendingInventorySync, createBootstrapInventorySyncOperations } from '../inventory/sync-queue.ts';
 import type { InventoryItem, InventoryState } from '../inventory/types.ts';
 import { receiptReviewFixture } from '../receipts/fixture.ts';
 import { canConfirmReceiptDraft, confirmReceiptDraft, isReceiptDraftAlreadyConfirmed } from '../receipts/confirm-receipt.ts';
@@ -162,6 +163,39 @@ test('저장소 상태는 v1 배열을 v2 원장 상태로 안전하게 이관�
     seedInventory,
   );
   equal(enriched.items.find((item) => item.id === 'leftover-chicken')?.recommendedUseByAt, '2026-08-29', '시드 lot ISO 날짜 보완');
+});
+
+test('원격 상태 위에 대기 중인 재고 변경을 순서대로 다시 적용한다', () => {
+  const remoteItem = seedInventory[0];
+  assert(remoteItem, '시드 재고가 필요함');
+  const pendingItem: InventoryItem = { ...remoteItem, id: 'pending-item', name: '대기 재고' };
+  const projected = applyPendingInventorySync(
+    { version: 2, items: [remoteItem], events: [] },
+    [
+      { id: 'add', type: 'upsert-items', items: [pendingItem] },
+      { id: 'update', type: 'upsert-items', items: [{ ...remoteItem, quantity: '반 모' }] },
+      { id: 'remove', type: 'delete-item', itemId: 'pending-item' },
+    ],
+  );
+
+  equal(projected.items.length, 1, '삭제 대기 작업도 원격 상태에 반영');
+  equal(projected.items[0]?.quantity, '반 모', '같은 lot의 마지막 수정이 우선');
+});
+
+test('초기 이관에서도 영수증 lot와 입고 원장을 단일 RPC 작업으로 묶는다', () => {
+  const reviewed = updateReceiptDraftItem(receiptReviewFixture, 'pork', { included: false });
+  const confirmed = confirmReceiptDraft(
+    { version: 2, items: seedInventory, events: [] },
+    reviewed,
+    { occurredAt: '2026-08-29T14:00:00.000Z' },
+  );
+  const operations = createBootstrapInventorySyncOperations(confirmed);
+  const receiptOperation = operations.find((operation) => operation.type === 'commit-receipt');
+
+  assert(receiptOperation?.type === 'commit-receipt', '영수증 확정은 RPC 작업이어야 함');
+  equal(receiptOperation.items.length, 5, '선택한 lot를 함께 전송');
+  equal(receiptOperation.events.length, 5, '입고 원장을 함께 전송');
+  equal(receiptOperation.receiptId, reviewed.batchId, '영수증 batch id 보존');
 });
 
 test('영수증 fixture는 원문과 검수 필요 상태를 보존하며, 제외 결과를 즉시 계산한다', () => {

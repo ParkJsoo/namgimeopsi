@@ -76,9 +76,9 @@ function toEvent(row: InventoryEventRow): InventoryLedgerEvent {
   };
 }
 
-function itemRow(user: User, item: InventoryItem) {
+function itemRow(userId: string, item: InventoryItem) {
   return {
-    user_id: user.id,
+    user_id: userId,
     id: item.id,
     name: item.name,
     quantity: item.quantity,
@@ -94,9 +94,9 @@ function itemRow(user: User, item: InventoryItem) {
   };
 }
 
-function eventRow(user: User, event: InventoryLedgerEvent) {
+function eventRow(userId: string, event: InventoryLedgerEvent) {
   return {
-    user_id: user.id,
+    user_id: userId,
     id: event.id,
     type: event.type,
     inventory_item_id: event.inventoryItemId,
@@ -109,6 +109,16 @@ function eventRow(user: User, event: InventoryLedgerEvent) {
     receipt_id: event.type === 'intake' ? event.receiptId : null,
     raw_name: event.type === 'intake' ? event.rawName : null,
   };
+}
+
+function receiptItemPayload(item: InventoryItem) {
+  const { user_id: _userId, ...payload } = itemRow('', item);
+  return payload;
+}
+
+function receiptEventPayload(event: InventoryLedgerEvent) {
+  const { user_id: _userId, ...payload } = eventRow('', event);
+  return payload;
 }
 
 export async function ensureInventoryUser() {
@@ -138,7 +148,7 @@ export async function loadRemoteInventory() {
 
 export async function upsertInventoryItems(user: User, items: InventoryItem[]) {
   if (!items.length) return;
-  const { error } = await supabase.from('inventory_items').upsert(items.map((item) => itemRow(user, item)), { onConflict: 'user_id,id' });
+  const { error } = await supabase.from('inventory_items').upsert(items.map((item) => itemRow(user.id, item)), { onConflict: 'user_id,id' });
   if (error) throw error;
 }
 
@@ -149,6 +159,20 @@ export async function deleteInventoryItem(id: string) {
 
 export async function upsertInventoryEvents(user: User, events: InventoryLedgerEvent[]) {
   if (!events.length) return;
-  const { error } = await supabase.from('inventory_events').upsert(events.map((event) => eventRow(user, event)), { onConflict: 'user_id,id' });
+  const { error } = await supabase.from('inventory_events').upsert(events.map((event) => eventRow(user.id, event)), { onConflict: 'user_id,id' });
   if (error) throw error;
+}
+
+/** 영수증에서 만든 lot와 입고 원장을 Postgres 함수 하나로 확정한다. */
+export async function commitReceiptIntake(receiptId: string, items: InventoryItem[], events: InventoryLedgerEvent[]) {
+  const { data, error } = await supabase.rpc('commit_receipt_intake', {
+    p_receipt_id: receiptId,
+    p_items: items.map(receiptItemPayload),
+    p_events: events.map(receiptEventPayload),
+  });
+  if (error) throw error;
+  if (data !== 'confirmed' && data !== 'already-confirmed') {
+    throw new Error('영수증 입고 결과를 확인하지 못했어요.');
+  }
+  return data;
 }

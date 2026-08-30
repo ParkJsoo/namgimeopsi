@@ -87,7 +87,7 @@ function KindPicker({
 
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'home' | 'inventory'>('home');
-  const { items: inventory, isReady, add, update, remove, consumeAll, confirmReceipt } = useInventory();
+  const { items: inventory, isReady, syncStatus, add, update, remove, consumeAll, confirmReceipt, retrySync } = useInventory();
   const [editorOpen, setEditorOpen] = useState(false);
   const [receiptEntryOpen, setReceiptEntryOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -167,7 +167,7 @@ export default function HomeScreen() {
 
   const deleteItem = () => {
     if (!editingId) return;
-    Alert.alert('재고에서 제외할까요?', '이 항목은 시드 데이터 화면에서만 삭제됩니다.', [
+    Alert.alert('재고에서 제외할까요?', '이 항목은 내 재고와 동기화 목록에서 제외됩니다.', [
       { text: '취소', style: 'cancel' },
       {
         text: '제외',
@@ -206,6 +206,18 @@ export default function HomeScreen() {
                   <Text style={styles.title}>오늘 먼저 먹을 게 있어요</Text>
                 </View>
               </View>
+
+              {syncStatus !== 'synced' ? (
+                <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
+                  <Text style={styles.syncNoticeText}>
+                    {syncStatus === 'error'
+                      ? '동기화하지 못했어요. 탭해서 다시 시도해 주세요.'
+                      : syncStatus === 'offline'
+                        ? '오프라인으로 저장했어요. 연결되면 동기화해요.'
+                        : '재고를 안전하게 동기화하고 있어요.'}
+                  </Text>
+                </Pressable>
+              ) : null}
 
               <View style={styles.priorityCard}>
                 <Text style={styles.priorityHeading}>오늘 먼저 먹으면 좋은 것</Text>
@@ -406,6 +418,8 @@ const styles = StyleSheet.create({
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF8F4' },
   scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 116 },
   header: { marginBottom: 104 },
+  syncNotice: { alignSelf: 'flex-start', marginTop: -92, marginBottom: 20, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: '#FFF0DC' },
+  syncNoticeText: { color: '#6C4A18', fontSize: 12, lineHeight: 17 },
   inventoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   eyebrow: { fontSize: 15, lineHeight: 22, color: '#6C7168' },
   title: { marginTop: 4, fontSize: 25, lineHeight: 34, fontWeight: '700', color: '#1D211C', letterSpacing: -0.5 },
