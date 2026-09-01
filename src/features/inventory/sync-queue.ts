@@ -20,6 +20,7 @@ export type InventorySyncOperation =
       id: string;
       type: 'commit-receipt';
       receiptId: string;
+      scanJobId?: string;
       items: InventoryItem[];
       events: InventoryLedgerEvent[];
     };

@@ -80,7 +80,7 @@ export function useInventory() {
       case 'upsert-events':
         return upsertInventoryEvents(user, operation.events);
       case 'commit-receipt':
-        return commitReceiptIntake(operation.receiptId, operation.items, operation.events);
+        return commitReceiptIntake(operation.receiptId, operation.items, operation.events, operation.scanJobId);
     }
   }
 
@@ -219,6 +219,7 @@ export function useInventory() {
         id: createOperationId('commit-receipt'),
         type: 'commit-receipt',
         receiptId: draft.batchId,
+        scanJobId: draft.scanJobId,
         items: newItems,
         events: newEvents,
       });
