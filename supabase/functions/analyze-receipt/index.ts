@@ -43,16 +43,22 @@ Deno.serve(async (request) => {
   const authorization = request.headers.get('Authorization');
   if (!authorization) return json({ error: 'authentication_required' }, 401);
 
-  const userClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
+  const userClient = createClient(url, anonKey, {
+    auth: { persistSession: false },
+    global: { headers: { Authorization: authorization } },
+  });
   const { data: authData, error: authError } = await userClient.auth.getUser();
   if (authError || !authData.user) return json({ error: 'authentication_required' }, 401);
+
+  const admin = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
 
   const requestBody = await request.json().catch(() => null) as { scanId?: unknown } | null;
   const scanId = typeof requestBody?.scanId === 'string' ? requestBody.scanId.trim() : '';
   if (!scanId) return json({ error: 'scan_id_required' }, 400);
 
-  const admin = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
-  const { data: scan, error: scanError } = await admin
+  // Use the caller-scoped query for ownership. It exercises the same RLS rule
+  // that protects scan jobs in the app, before privileged state transitions.
+  const { data: scan, error: scanError } = await userClient
     .from('scan_jobs')
     .select('id, user_id, storage_path, mime_type, byte_size, status')
     .eq('id', scanId)

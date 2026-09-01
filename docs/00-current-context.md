@@ -8,7 +8,7 @@
 - 목적: AI 신뢰 UX와 모바일 제품 설계/구현 역량을 보여 주는 공개 포트폴리오 프로젝트
 - GitHub: <https://github.com/ParkJsoo/namgimeopsi>
 - 로컬 경로: `/Users/jeongsoopark/develop/namgimeopsi`
-- 구현 상태: Expo TypeScript 앱에서 영수증 검수형 입고, 남은 음식 등록, 메뉴 추천·전량 소비를 구현했다. 재고는 Supabase 익명 사용자별 Postgres에 동기화하고, 기존 AsyncStorage 상태는 최초 원격 시드와 오프라인 캐시로 유지한다. private 원본 이미지·scan job·서버 검증 코드와 마이그레이션은 구현했지만, 실제 프로젝트 적용과 Edge Function 배포는 아직이다. OCR provider도 아직 연결하지 않았다.
+- 구현 상태: Expo TypeScript 앱에서 영수증 검수형 입고, 남은 음식 등록, 메뉴 추천·전량 소비를 구현했다. 재고는 Supabase 익명 사용자별 Postgres에 동기화하고, 기존 AsyncStorage 상태는 최초 원격 시드와 오프라인 캐시로 유지한다. private 원본 이미지·scan job·서버 검증 마이그레이션은 실제 프로젝트에 적용했고 Edge Function 초안도 배포했다. 다만 배포본은 scan job 조회에서 `scan_not_found`를 반환해, 로컬 보정본의 재배포와 최종 익명 E2E 검증이 남아 있다. OCR provider도 아직 연결하지 않았다.
 
 ## Locked decisions
 
@@ -63,7 +63,7 @@
 - `supabase/migrations/20260901000000_backfill_receipt_intakes.sql`는 `inventory_events`에 이미 남은 receipt batch를 `receipt_intakes`에 멱등 backfill한다. SQL Editor로 실제 프로젝트에 적용했고, 기존 receipt batch 중 선점 행이 없는 건은 `0`건으로 검증했다. `sync-queue.ts`는 lot와 `intake` 이벤트의 일대일 매핑이 완전한 batch만 RPC로 보낸다. lot가 삭제된 legacy batch는 남은 item을 일반 upsert하고, 모든 `intake` 이벤트를 recovery `upsert-events` 작업으로 보존한다.
 - 로컬 recovery 단위 테스트, 타입 검사·lint·웹 export와 실제 새 익명 사용자 재시도(`confirmed → already-confirmed`)·동시성(`confirmed` 1건 + `already-confirmed` 1건, 변조 payload 재시도 불변성) 검증을 마쳤다. backfill 적용 뒤 같은 익명 재시도·동시성 검증도 다시 통과했으며, 전문 재리뷰에서 추가 병합 차단 이슈는 찾지 못했다.
 - `expo-image-picker`로 선택한 JPG/PNG/HEIC(10MB 이하)는 사용자 ID 경로의 private `receipt-images` bucket에 저장하도록 구현했다. `scan_jobs`에는 원본 경로·MIME·실제 바이트 수·분석 상태만 남기고 공개 URL을 만들지 않는다. `analyze-receipt` Edge Function은 소유자·경로·MIME·용량을 server-side에서 다시 확인한 뒤 fixture 결과만 `ready`로 만든다. OCR provider가 없으므로 앱은 fixture 결과를 명시하고 실제 OCR처럼 표시하지 않는다. `commit_receipt_scan_intake`는 ready scan job만 기존 입고 RPC와 같은 트랜잭션에 연결한다.
-- `20260901010000_receipt_scan_jobs.sql` 적용과 `analyze-receipt` 배포는 아직이다. Supabase 관리 CLI 인증이 없고 Dashboard Browser 연결이 작업 중 끊겨 실제 프로젝트에는 반영하지 못했다. Expo lint 복구를 위해 `eslint`·`eslint-config-expo`를 dev dependency로 명시했으며, Expo 57/TypeScript 6 resolver 호환 문제의 import 규칙은 `tsc --noEmit` 검증으로 대체했다.
+- `20260901010000_receipt_scan_jobs.sql`은 SQL Editor로 실제 프로젝트에 적용했고 `analyze-receipt` Edge Function 초안도 Dashboard에서 배포했다. 새 익명 사용자가 private 이미지 업로드와 `scan_jobs` 생성에는 성공했고, 인증 없이 생성한 `/object/public/` 경로 요청은 HTTP 400으로 차단됐다. 하지만 배포된 함수는 존재하는 소유 scan job을 `scan_not_found`(404)로 잘못 처리한다. 로컬 함수는 소유 job 조회를 호출자 RLS 클라이언트로 옮기고 오류를 구분하도록 보정했으며, Dashboard Browser 연결이 응답을 멈춰 재배포와 `ready → commit_receipt_scan_intake` 최종 검증은 남아 있다. Expo lint 복구를 위해 `eslint`·`eslint-config-expo`를 dev dependency로 명시했으며, Expo 57/TypeScript 6 resolver 호환 문제의 import 규칙은 `tsc --noEmit` 검증으로 대체했다.
 - 375 × 812 웹 앱은 익명 로그인·초기 동기화 뒤 정상 로드됐고 브라우저 콘솔 오류는 없었다(기존 RN `shadow*` 경고만 있음). 새 익명 세션에서 두 테이블 조회가 모두 HTTP 200으로 성공했고, 초기 시드 재고 5건의 실제 업서트를 확인했다. 새 검증 익명 사용자에서는 RPC 첫 호출 `confirmed`, 재호출 `already-confirmed`, 두 테이블 읽기, 품목 수정·삭제까지 성공했다. 별도 동시성 검증에서는 같은 batch의 서로 다른 두 호출이 `confirmed` 1건과 `already-confirmed` 1건으로 끝났고, 세 번째 변조 payload도 `already-confirmed`를 반환했으며 재고·이벤트 검증 행은 모두 삭제했다.
 - Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. Chrome 375 × 812에서 빠른 추가·영수증 분석·검수·수정·제외·취소·확정 완료·보관 위치별 입고를 QA했고, 재확정 시 중복 입고 없이 `이미 냉장고에 담은 영수증이에요` 안내가 노출되는 것도 확인했다. Figma 원본 프레임은 연결된 Chrome에서 WebGL을 지원하지 않아 열 수 없었고, 차단 증거는 `docs/qa-artifacts/06-figma-webgl-blocked.png`에 있다. Figma Desktop fallback도 Computer Use 연결 시작 실패로 캡처하지 못했다. Figma MCP는 재호출하지 않았다.
 - 검증 완료: `npm run lint`, `npm run test:domain`, `npx tsc --noEmit`, `npx expo export --platform web`, 375 × 812 Chrome 익명 동기화 확인.
@@ -71,7 +71,7 @@
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. `20260901010000_receipt_scan_jobs.sql`을 실제 프로젝트에 적용하고 `analyze-receipt` Edge Function을 배포한다. 새 익명 사용자로 private 업로드 → ready scan job → `commit_receipt_scan_intake` → 공개 URL 부재를 검증한다. OCR provider와 키를 연결하기 전까지 fixture 결과라는 UI 고지를 유지한다.
+2. Dashboard Browser 연결을 복구해 `supabase/functions/analyze-receipt/index.ts`의 보정본을 `analyze-receipt`에 재배포한다. 새 익명 사용자로 private 업로드 → ready scan job → `commit_receipt_scan_intake`를 실제 호출하고, 인증 없는 원본 조회가 계속 차단되는지 다시 확인한다. OCR provider와 키를 연결하기 전까지 fixture 결과라는 UI 고지를 유지한다.
 3. 수량 기반 부분 차감과 조리 세션은 영수증 검수 흐름 뒤 별도 작업으로 추가한다. 그전에는 전량 소비와 수동 수량 수정만 지원한다.
 4. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
 5. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
@@ -101,4 +101,6 @@
   - `1c3b93d fix(receipts): lock intake batches`
   - `0c04788 docs: record remaining sync blockers`
   - `1c951c7 fix(inventory): recover legacy receipt sync`
+- 이번 세션의 로컬 커밋:
+  - `7af9ac5 feat(receipts): add private image scan workflow`
 - 위 커밋은 아직 원격에 푸시하지 않았다. Figma 변경은 외부 디자인 파일에 반영됐고, 이번 문서 갱신도 별도 작은 커밋으로 기록한다.
