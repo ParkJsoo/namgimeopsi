@@ -60,8 +60,8 @@
 - `supabase/migrations/20260829000000_inventory.sql`로 `inventory_items`, `inventory_events`, 사용자별 RLS 정책과 `authenticated` 역할의 읽기·쓰기 권한을 정의했고 실제 프로젝트에 반영했다. 두 테이블 모두 `authenticated`의 `SELECT / INSERT / UPDATE / DELETE` 권한과 사용자별 RLS 정책을 확인했다.
 - `useInventory`는 기존 v1/v2 AsyncStorage를 먼저 읽고, 로컬 변경을 영속 outbox에 기록한 뒤 순서대로 원격에 반영한다. 원격 요청 실패는 로컬 재고를 시드 데이터로 대체하지 않으며, 대기·실패 상태를 노출하고 사용자가 재시도할 수 있다. 원격 행을 다시 읽을 때에도 대기 중인 로컬 작업을 순서대로 재적용한다.
 - 영수증 확정은 `commit_receipt_intake` Postgres RPC 하나로 선택한 lot와 `intake` 원장을 같은 트랜잭션에 저장한다. `receipt_intakes(user_id, receipt_id)`의 유니크 선점으로 최초 요청만 처리하며, 같은 batch의 재호출·동시 호출·다른 payload 호출은 item/event를 건드리지 않고 `already-confirmed`를 반환한다. 기존 로컬 영수증 데이터의 최초 이관도 같은 RPC 작업으로 묶는다.
-- `supabase/migrations/20260901000000_backfill_receipt_intakes.sql`는 `inventory_events`에 이미 남은 receipt batch를 `receipt_intakes`에 멱등 backfill한다. `sync-queue.ts`는 lot와 `intake` 이벤트의 일대일 매핑이 완전한 batch만 RPC로 보낸다. lot가 삭제된 legacy batch는 남은 item을 일반 upsert하고, 모든 `intake` 이벤트를 recovery `upsert-events` 작업으로 보존한다.
-- 로컬 recovery 단위 테스트, 타입 검사·lint·웹 export와 실제 새 익명 사용자 재시도(`confirmed → already-confirmed`)·동시성(`confirmed` 1건 + `already-confirmed` 1건, 변조 payload 재시도 불변성) 검증을 마쳤다. 단, 현재 Supabase CLI에는 관리 인증이 없고 Dashboard SQL Editor의 최종 실행 확인도 브라우저 연결에서 완료되지 않았다. 마이그레이션 실제 적용과 legacy backfill 검증 전에는 병합하지 않는다.
+- `supabase/migrations/20260901000000_backfill_receipt_intakes.sql`는 `inventory_events`에 이미 남은 receipt batch를 `receipt_intakes`에 멱등 backfill한다. SQL Editor로 실제 프로젝트에 적용했고, 기존 receipt batch 중 선점 행이 없는 건은 `0`건으로 검증했다. `sync-queue.ts`는 lot와 `intake` 이벤트의 일대일 매핑이 완전한 batch만 RPC로 보낸다. lot가 삭제된 legacy batch는 남은 item을 일반 upsert하고, 모든 `intake` 이벤트를 recovery `upsert-events` 작업으로 보존한다.
+- 로컬 recovery 단위 테스트, 타입 검사·lint·웹 export와 실제 새 익명 사용자 재시도(`confirmed → already-confirmed`)·동시성(`confirmed` 1건 + `already-confirmed` 1건, 변조 payload 재시도 불변성) 검증을 마쳤다. backfill 적용 뒤 같은 익명 재시도·동시성 검증도 다시 통과했으며, 전문 재리뷰에서 추가 병합 차단 이슈는 찾지 못했다.
 - 375 × 812 웹 앱은 익명 로그인·초기 동기화 뒤 정상 로드됐고 브라우저 콘솔 오류는 없었다(기존 RN `shadow*` 경고만 있음). 새 익명 세션에서 두 테이블 조회가 모두 HTTP 200으로 성공했고, 초기 시드 재고 5건의 실제 업서트를 확인했다. 새 검증 익명 사용자에서는 RPC 첫 호출 `confirmed`, 재호출 `already-confirmed`, 두 테이블 읽기, 품목 수정·삭제까지 성공했다. 별도 동시성 검증에서는 같은 batch의 서로 다른 두 호출이 `confirmed` 1건과 `already-confirmed` 1건으로 끝났고, 세 번째 변조 payload도 `already-confirmed`를 반환했으며 재고·이벤트 검증 행은 모두 삭제했다.
 - Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. Chrome 375 × 812에서 빠른 추가·영수증 분석·검수·수정·제외·취소·확정 완료·보관 위치별 입고를 QA했고, 재확정 시 중복 입고 없이 `이미 냉장고에 담은 영수증이에요` 안내가 노출되는 것도 확인했다. Figma 원본 프레임은 연결된 Chrome에서 WebGL을 지원하지 않아 열 수 없었고, 차단 증거는 `docs/qa-artifacts/06-figma-webgl-blocked.png`에 있다. Figma Desktop fallback도 Computer Use 연결 시작 실패로 캡처하지 못했다. Figma MCP는 재호출하지 않았다.
 - 검증 완료: `npm run lint`, `npm run test:domain`, `npx tsc --noEmit`, `npx expo export --platform web`, 375 × 812 Chrome 익명 동기화 확인.
@@ -69,11 +69,10 @@
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. 병합 차단 동기화 이슈의 배포를 완료한다. Dashboard SQL Editor에 준비된 `20260901000000_backfill_receipt_intakes.sql`을 실행하거나 Supabase 관리 인증으로 `db push`를 수행하고, 기존 receipt batch 중 `receipt_intakes`에 없는 행이 0건인지 확인한다. 그 뒤 전문 재리뷰를 다시 통과시킨 후에만 병합한다.
-3. OCR 원본 영수증 이미지를 private Storage에 저장하고, `commit_receipt_intake`를 이미지·scan job까지 포함한 server-side 흐름으로 확장한다. 새 기기 동기화는 정식 계정 로그인 도입 뒤에 검증한다.
-4. 수량 기반 부분 차감과 조리 세션은 영수증 검수 흐름 뒤 별도 작업으로 추가한다. 그전에는 전량 소비와 수동 수량 수정만 지원한다.
-5. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
-6. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
+2. OCR 원본 영수증 이미지를 private Storage에 저장하고, `commit_receipt_intake`를 이미지·scan job까지 포함한 server-side 흐름으로 확장한다. 새 기기 동기화는 정식 계정 로그인 도입 뒤에 검증한다.
+3. 수량 기반 부분 차감과 조리 세션은 영수증 검수 흐름 뒤 별도 작업으로 추가한다. 그전에는 전량 소비와 수동 수량 수정만 지원한다.
+4. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
+5. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
 
 ## Last verified repository state
 
@@ -98,4 +97,6 @@
   - `da08a01 docs: record supabase access verification`
   - `19bd756 fix(inventory): make remote sync resilient`
   - `1c3b93d fix(receipts): lock intake batches`
+  - `0c04788 docs: record remaining sync blockers`
+  - `1c951c7 fix(inventory): recover legacy receipt sync`
 - 위 커밋은 아직 원격에 푸시하지 않았다. Figma 변경은 외부 디자인 파일에 반영됐고, 이번 문서 갱신도 별도 작은 커밋으로 기록한다.
