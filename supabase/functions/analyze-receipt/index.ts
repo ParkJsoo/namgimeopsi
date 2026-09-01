@@ -18,7 +18,10 @@ function json(body: unknown, status = 200) {
 }
 
 async function markFailed(
-  admin: ReturnType<typeof createClient>,
+  // Edge Functions do not ship this app's generated database types. Keeping
+  // the administrative client untyped here avoids inventing an incomplete
+  // schema solely for the error-state update.
+  admin: any,
   scanId: string,
   errorCode: string,
 ) {
