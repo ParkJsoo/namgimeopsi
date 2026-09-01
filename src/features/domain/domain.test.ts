@@ -198,6 +198,29 @@ test('초기 이관에서도 영수증 lot와 입고 원장을 단일 RPC 작업
   equal(receiptOperation.receiptId, reviewed.batchId, '영수증 batch id 보존');
 });
 
+test('삭제된 legacy receipt lot의 intake 원장은 recovery upsert로 보존한다', () => {
+  const reviewed = updateReceiptDraftItem(receiptReviewFixture, 'pork', { included: false });
+  const confirmed = confirmReceiptDraft(
+    { version: 2, items: seedInventory, events: [] },
+    reviewed,
+    { occurredAt: '2026-08-29T14:00:00.000Z' },
+  );
+  const deletedLotId = confirmed.events.find((event) => event.type === 'intake')?.inventoryItemId;
+  assert(deletedLotId, '영수증 intake lot가 필요함');
+
+  const operations = createBootstrapInventorySyncOperations({
+    ...confirmed,
+    items: confirmed.items.filter((item) => item.id !== deletedLotId),
+  });
+  const receiptOperation = operations.find((operation) => operation.type === 'commit-receipt');
+  const recoveryOperation = operations.find((operation) => operation.type === 'upsert-events');
+
+  equal(receiptOperation, undefined, '불완전 batch는 RPC로 재확정하지 않음');
+  assert(recoveryOperation?.type === 'upsert-events', 'recovery 이벤트 upsert가 필요함');
+  equal(recoveryOperation.events.length, 5, '삭제된 lot를 포함한 intake 원장 전체 보존');
+  equal(recoveryOperation.events[0]?.type, 'intake', 'recovery 원장 타입');
+});
+
 test('영수증 fixture는 원문과 검수 필요 상태를 보존하며, 제외 결과를 즉시 계산한다', () => {
   equal(receiptReviewFixture.items.length, 6, '데모 영수증 후보 수');
   equal(getReceiptReviewCounts(receiptReviewFixture).confirmed, 4, '확인됨 후보 수');

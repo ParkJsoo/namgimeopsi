@@ -64,7 +64,7 @@ export function applyPendingInventorySync(remote: InventoryState, operations: In
   }, remote);
 }
 
-/** 기존 로컬 재고를 처음 원격에 이관할 때도 영수증 lot와 원장을 같은 RPC로 보낸다. */
+/** 기존 로컬 재고를 처음 원격에 이관할 때도 완전한 영수증 batch는 같은 RPC로 보낸다. */
 export function createBootstrapInventorySyncOperations(state: InventoryState): InventorySyncOperation[] {
   const operations: InventorySyncOperation[] = [];
   const receiptEvents = state.events.filter(
@@ -78,16 +78,25 @@ export function createBootstrapInventorySyncOperations(state: InventoryState): I
   });
 
   const receiptItemIds = new Set<string>();
+  const committedReceiptEventIds = new Set<string>();
   eventsByReceiptId.forEach((events, receiptId) => {
     const items = state.items.filter((item) => events.some((event) => event.inventoryItemId === item.id));
-    if (items.length !== events.length) return;
+    const eventItemIds = new Set(events.map((event) => event.inventoryItemId));
+    const hasOneToOneLotMapping =
+      items.length === events.length
+      && eventItemIds.size === events.length
+      && items.every((item) => eventItemIds.has(item.id));
+    if (!hasOneToOneLotMapping) return;
+
     items.forEach((item) => receiptItemIds.add(item.id));
+    events.forEach((event) => committedReceiptEventIds.add(event.id));
     operations.push({ id: `bootstrap-receipt-${receiptId}`, type: 'commit-receipt', receiptId, items, events });
   });
 
   const remainingItems = state.items.filter((item) => !receiptItemIds.has(item.id));
-  const receiptEventIds = new Set(receiptEvents.map((event) => event.id));
-  const remainingEvents = state.events.filter((event) => !receiptEventIds.has(event.id));
+  // 일부 lot가 삭제된 legacy batch는 RPC의 일대일 검증을 통과하지 못한다.
+  // 그 경우에도 기존 intake 원장은 recovery upsert로 보존한다.
+  const remainingEvents = state.events.filter((event) => !committedReceiptEventIds.has(event.id));
   if (remainingItems.length) operations.unshift({ id: 'bootstrap-items', type: 'upsert-items', items: remainingItems });
   if (remainingEvents.length) operations.push({ id: 'bootstrap-events', type: 'upsert-events', events: remainingEvents });
   return operations;
