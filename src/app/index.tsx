@@ -87,7 +87,7 @@ function KindPicker({
 
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'home' | 'inventory'>('home');
-  const { items: inventory, isReady, syncStatus, add, update, remove, consumeAll, confirmReceipt, retrySync } = useInventory();
+  const { items: inventory, isReady, syncStatus, add, update, remove, completeCookingSession, confirmReceipt, retrySync } = useInventory();
   const [editorOpen, setEditorOpen] = useState(false);
   const [receiptEntryOpen, setReceiptEntryOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -379,16 +379,13 @@ export default function HomeScreen() {
       <RecipeCompletionSheet
         recommendation={pendingRecommendation}
         consumedItems={pendingConsumedItems}
-        onConfirm={() => {
+        onConfirm={(consumptions) => {
           if (!pendingRecommendation || !pendingConsumedItems.length) return;
-          consumeAll(
-            pendingConsumedItems.map((item) => item.id),
-            {
-              recipeId: pendingRecommendation.recipe.id,
-              recipeTitle: pendingRecommendation.recipe.title,
-            },
-          );
-          setPendingRecommendation(null);
+          const didComplete = completeCookingSession(consumptions, {
+            recipeId: pendingRecommendation.recipe.id,
+            recipeTitle: pendingRecommendation.recipe.title,
+          });
+          if (didComplete) setPendingRecommendation(null);
         }}
         onClose={() => setPendingRecommendation(null)}
       />

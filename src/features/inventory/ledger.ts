@@ -6,6 +6,17 @@ export type CompletionContext = {
   recipeTitle?: string;
 };
 
+export type CookingSessionContext = CompletionContext & {
+  sessionId: string;
+};
+
+export type CookingConsumption = {
+  itemId: string;
+  /** `all`은 lot를 소진 처리하고, `remaining`은 사용 뒤 남은 생활 단위를 기록한다. */
+  mode: 'all' | 'remaining';
+  remainingQuantity?: string;
+};
+
 function getConsumedItemIds(events: InventoryLedgerEvent[]) {
   return new Set(events.filter((event) => event.type === 'consume-all').map((event) => event.inventoryItemId));
 }
@@ -44,6 +55,64 @@ export function completeInventoryItems(
   }));
 
   return { ...state, events: [...state.events, ...events] };
+}
+
+/**
+ * 조리 완료 시 사용자가 확인한 결과만 반영한다. `반 봉지`, `조금 남음` 같은
+ * 생활 단위를 계산하거나 다른 단위로 환산하지 않고, 남은 양을 그대로 다음 재고값으로 쓴다.
+ */
+export function completeCookingSession(
+  state: InventoryState,
+  consumptions: CookingConsumption[],
+  context: CookingSessionContext,
+): InventoryState {
+  const activeById = new Map(getActiveInventoryItems(state).map((item) => [item.id, item]));
+  const uniqueConsumptions = new Map(consumptions.map((consumption) => [consumption.itemId, consumption]));
+  const changedItems = new Map<string, InventoryItem>();
+  const events: InventoryLedgerEvent[] = [];
+
+  uniqueConsumptions.forEach((consumption, itemId) => {
+    const item = activeById.get(itemId);
+    if (!item) return;
+
+    if (consumption.mode === 'all') {
+      events.push({
+        id: `consume-all-${context.sessionId}-${item.id}`,
+        type: 'consume-all',
+        inventoryItemId: item.id,
+        foodName: item.name,
+        quantityLabel: item.quantity,
+        occurredAt: context.occurredAt,
+        recipeId: context.recipeId,
+        recipeTitle: context.recipeTitle,
+        cookingSessionId: context.sessionId,
+      });
+      return;
+    }
+
+    const remainingQuantity = consumption.remainingQuantity?.trim();
+    if (!remainingQuantity || remainingQuantity === item.quantity) return;
+    changedItems.set(item.id, { ...item, quantity: remainingQuantity });
+    events.push({
+      id: `consume-${context.sessionId}-${item.id}`,
+      type: 'consume',
+      inventoryItemId: item.id,
+      foodName: item.name,
+      quantityLabel: '일부 사용',
+      remainingQuantityLabel: remainingQuantity,
+      occurredAt: context.occurredAt,
+      recipeId: context.recipeId,
+      recipeTitle: context.recipeTitle,
+      cookingSessionId: context.sessionId,
+    });
+  });
+
+  if (!events.length) return state;
+  return {
+    ...state,
+    items: state.items.map((item) => changedItems.get(item.id) ?? item),
+    events: [...state.events, ...events],
+  };
 }
 
 /** AsyncStorage v1 배열과 v2 객체를 모두 읽는다. */

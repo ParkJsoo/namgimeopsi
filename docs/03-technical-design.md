@@ -74,9 +74,10 @@ cooking_session_items
 | `foods` | 표준 식재료명, 카테고리, 기본 보관 위치, 기본 권장 보관 기간 |
 | `food_aliases` | 영수증 원문·사용자 수정 이력과 표준 식재료의 매핑 |
 | `inventory_items` | 한 번의 구매·보관 단위. 동명의 재료를 임의로 합치지 않는다. |
-| `inventory_events` | 입고, 소비, 수정, 폐기 이력. 현재 잔량의 근거가 된다. |
+| `inventory_events` | 입고, 전량/부분 소비, 수정, 폐기 이력. 부분 소비에는 사용 뒤 사용자가 확인한 `remaining_quantity_label`을 남긴다. |
 | `scan_jobs` | 업로드 이미지, AI 결과, 분석 상태, 오류를 관리한다. |
 | `recipes` | 검수된 구조화 레시피와 필요 재료를 저장한다. |
+| `cooking_sessions` / `cooking_session_items` | 한 번의 조리·섭취 완료를 멱등하게 선점하고, 선택한 lot별 소비 방식·남은 생활 단위를 감사 가능하게 보존한다. |
 
 `inventory_items`에는 포장 표기일 `label_expiry_at`과 편의용 제안일 `recommended_use_by_at`을 별도 저장한다. 후자는 식품 안전을 보장하는 날짜가 아니다.
 
@@ -100,7 +101,7 @@ score =
 
 - Unit: 날짜 우선순위, 레시피 점수화, 별칭 정규화, AI JSON 파서, 재고 변화량
 - Component: 검수 항목 수정·제외·실패 상태
-- Integration: household RLS, `commit-scan`과 조리 완료 트랜잭션
+- Integration: 사용자별 RLS, `commit-scan`과 조리 완료 트랜잭션의 멱등성
 - Device smoke test: 실제 영수증 → 검수 → 입고 → 메뉴 선택 → 차감 흐름
 
 데모는 실제 영수증 이미지와 mock provider를 모두 지원한다. mock provider는 재현 가능한 UI 테스트와 발표 데모에 사용하고, 실제 API 결과는 별도로 검증한다.

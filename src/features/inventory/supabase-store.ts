@@ -27,6 +27,8 @@ type InventoryEventRow = {
   occurred_at: string;
   recipe_id: string | null;
   recipe_title: string | null;
+  cooking_session_id: string | null;
+  remaining_quantity_label: string | null;
   source: 'receipt' | null;
   receipt_id: string | null;
   raw_name: string | null;
@@ -64,6 +66,21 @@ function toEvent(row: InventoryEventRow): InventoryLedgerEvent {
     };
   }
 
+  if (row.type === 'consume') {
+    return {
+      id: row.id,
+      type: 'consume',
+      inventoryItemId: row.inventory_item_id,
+      foodName: row.food_name,
+      quantityLabel: row.quantity_label,
+      remainingQuantityLabel: row.remaining_quantity_label ?? '',
+      occurredAt: row.occurred_at,
+      recipeId: row.recipe_id ?? undefined,
+      recipeTitle: row.recipe_title ?? undefined,
+      cookingSessionId: row.cooking_session_id ?? undefined,
+    };
+  }
+
   return {
     id: row.id,
     type: 'consume-all',
@@ -73,6 +90,7 @@ function toEvent(row: InventoryEventRow): InventoryLedgerEvent {
     occurredAt: row.occurred_at,
     recipeId: row.recipe_id ?? undefined,
     recipeTitle: row.recipe_title ?? undefined,
+    cookingSessionId: row.cooking_session_id ?? undefined,
   };
 }
 
@@ -103,8 +121,10 @@ function eventRow(userId: string, event: InventoryLedgerEvent) {
     food_name: event.foodName,
     quantity_label: event.quantityLabel,
     occurred_at: event.occurredAt,
-    recipe_id: event.type === 'consume-all' ? event.recipeId ?? null : null,
-    recipe_title: event.type === 'consume-all' ? event.recipeTitle ?? null : null,
+    recipe_id: event.type === 'consume-all' || event.type === 'consume' ? event.recipeId ?? null : null,
+    recipe_title: event.type === 'consume-all' || event.type === 'consume' ? event.recipeTitle ?? null : null,
+    cooking_session_id: event.type === 'consume-all' || event.type === 'consume' ? event.cookingSessionId ?? null : null,
+    remaining_quantity_label: event.type === 'consume' ? event.remainingQuantityLabel : null,
     source: event.type === 'intake' ? event.source : null,
     receipt_id: event.type === 'intake' ? event.receiptId : null,
     raw_name: event.type === 'intake' ? event.rawName : null,
@@ -176,6 +196,36 @@ export async function commitReceiptIntake(receiptId: string, items: InventoryIte
   if (error) throw error;
   if (data !== 'confirmed' && data !== 'already-confirmed') {
     throw new Error('영수증 입고 결과를 확인하지 못했어요.');
+  }
+  return data;
+}
+
+/** 조리 세션과 부분/전량 소비를 하나의 RPC로 확정해 재고와 원장의 불일치를 막는다. */
+export async function commitCookingSession(events: InventoryLedgerEvent[]) {
+  const consumptionEvents = events.filter(
+    (event): event is Extract<InventoryLedgerEvent, { type: 'consume' | 'consume-all' }> =>
+      event.type === 'consume' || event.type === 'consume-all',
+  );
+  const firstEvent = consumptionEvents[0];
+  if (!firstEvent?.cookingSessionId) throw new Error('조리 세션 정보를 확인하지 못했어요.');
+
+  const { data, error } = await supabase.rpc('complete_cooking_session', {
+    p_session_id: firstEvent.cookingSessionId,
+    p_recipe_id: firstEvent.recipeId ?? null,
+    p_recipe_title: firstEvent.recipeTitle ?? null,
+    p_completed_at: firstEvent.occurredAt,
+    p_items: consumptionEvents.map((event) => ({
+      id: event.id,
+      inventory_item_id: event.inventoryItemId,
+      food_name: event.foodName,
+      quantity_label: event.quantityLabel,
+      remaining_quantity_label: event.type === 'consume' ? event.remainingQuantityLabel : null,
+      consumption_type: event.type,
+    })),
+  });
+  if (error) throw error;
+  if (data !== 'confirmed' && data !== 'already-confirmed') {
+    throw new Error('조리 완료 결과를 확인하지 못했어요.');
   }
   return data;
 }
