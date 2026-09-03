@@ -67,14 +67,17 @@
 - `20260902145056_add_cooking_session_consumption.sql`을 실제 프로젝트에 적용했다. `complete_cooking_session`은 `SECURITY INVOKER`, authenticated 전용 실행, 사용자별 RLS로 동작하며 세션 선점·부분/전량 소비 event·부분 소비 lot 수량·세션 감사 행을 하나의 트랜잭션에 기록한다. 새 익명 사용자 `66c6b66d-e968-4888-b659-8091b2809992` E2E에서 계란 `9개 → 8개` 부분 소비와 두부 전량 소비를 함께 확정했고, 첫 RPC는 `confirmed`, 동일 session 재호출은 `already-confirmed`, event 2건·session 1건·session item 2건을 확인했다. 앱은 사용 후 남은 양을 직접 확인하게 하며 `반 봉지`·`조금 남음` 같은 생활 단위를 자동 환산하지 않는다.
 - 375px 웹 QA에서 `애호박 두부덮밥`의 조리 완료 시트를 열고, 두부를 `남은 양`으로 바꾼 뒤 `반 모`를 입력해 그대로 표시되는 것을 확인했다. `아직 있어요`로 닫았을 때 재고를 변경하지 않는 상태도 확인했다.
 - 375 × 812 웹 앱은 익명 로그인·초기 동기화 뒤 정상 로드됐고 브라우저 콘솔 오류는 없었다(기존 RN `shadow*` 경고만 있음). 새 익명 세션에서 두 테이블 조회가 모두 HTTP 200으로 성공했고, 초기 시드 재고 5건의 실제 업서트를 확인했다. 새 검증 익명 사용자에서는 RPC 첫 호출 `confirmed`, 재호출 `already-confirmed`, 두 테이블 읽기, 품목 수정·삭제까지 성공했다. 별도 동시성 검증에서는 같은 batch의 서로 다른 두 호출이 `confirmed` 1건과 `already-confirmed` 1건으로 끝났고, 세 번째 변조 payload도 `already-confirmed`를 반환했으며 재고·이벤트 검증 행은 모두 삭제했다.
+- 포트폴리오 데모 QA를 다시 수행했다. 375 × 812 웹 새 익명 세션에서 남은 음식 등록, 조리 완료의 `두부 1모 → 반 모` 부분 차감과 애호박 전량 차감, 재시작 뒤 원격 복원을 확인했다. 초기 오프라인 표시에서 재시도를 누른 뒤 동기화 상태가 해제되는 것도 확인했다. 별도 익명 사용자에서는 private PNG 업로드 → `analyze-receipt`의 `ready / fixture` → `commit_receipt_scan_intake`의 `confirmed` → 동일 요청의 `already-confirmed`와 public 원본 HTTP 400 차단을 재확인했다. 문제를 재현하지 못해 구현 변경은 하지 않았다.
+- README를 현 구현에 맞는 포트폴리오 안내 문서로 전면 갱신했다. 세 핵심 흐름, fixture-only 분석의 한계와 신뢰 UX, 결정론적 추천, outbox·RLS·멱등 RPC, 검증 범위, 로컬 실행·Supabase 적용 요건, 의도적으로 미구현인 범위를 실제 상태와 구분해 기록했다.
 - Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. Chrome 375 × 812에서 빠른 추가·영수증 분석·검수·수정·제외·취소·확정 완료·보관 위치별 입고를 QA했고, 재확정 시 중복 입고 없이 `이미 냉장고에 담은 영수증이에요` 안내가 노출되는 것도 확인했다. Figma 원본 프레임은 연결된 Chrome에서 WebGL을 지원하지 않아 열 수 없었고, 차단 증거는 `docs/qa-artifacts/06-figma-webgl-blocked.png`에 있다. Figma Desktop fallback도 Computer Use 연결 시작 실패로 캡처하지 못했다. Figma MCP는 재호출하지 않았다.
 - 검증 완료: `npm run lint`, `npm run test:domain`, `npx tsc --noEmit`, `npx expo export --platform web`, 375 × 812 Chrome 익명 동기화 확인.
 
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
-3. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
+2. 포트폴리오 완성도 작업은 README를 기준으로 실기기 사진 권한·레이아웃 QA, preview build, 2분 데모 영상·케이스 스터디 순으로 진행한다. 실제 OCR provider 연결은 별도의 명시적 제품 결정 전까지 하지 않는다.
+3. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
+4. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
 
 ## Last verified repository state
 

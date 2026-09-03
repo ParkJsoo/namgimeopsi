@@ -1,78 +1,147 @@
-# 남김없이 (Namgimeopsi)
+# 남김없이
 
-> 장 본 재료와 남은 음식을 빠르게 기록하고, 버리기 전에 오늘 먹을 한 끼를 결정해 주는 1~2인 가구용 AI 식재료 관리 앱.
+> **장을 본 날의 기록을, 오늘 먹을 한 끼의 결정으로 바꾸는 앱.**<br />
+> 1~2인 가구가 남은 음식과 임박 재료를 잊기 전에 쓰도록 돕는 모바일 포트폴리오 프로젝트입니다.
 
-`남김없이`는 포트폴리오 목적의 모바일 제품 프로젝트입니다. 단순 재고 목록이 아니라 **기록 → 오늘 먹기 → 소진**으로 이어지는 경험을 실제로 구현합니다.
+<p align="center">
+  <img src="docs/qa-artifacts/01-home-375x812.png" width="260" alt="남김없이 홈 — 오늘 먼저 먹을 것과 메뉴 추천" />
+</p>
 
-## Problem
+## 냉장고를 정리하는 일보다, 오늘 뭘 먹을지가 더 어렵다
 
-1~2인 가구는 구매 단위보다 소비 속도가 느려 식재료, 반찬, 배달 잔반을 잊고 버리기 쉽습니다. 하지만 매번 품목·수량·날짜를 직접 기록하는 재고 앱은 오래 쓰기 어렵습니다.
+식재료 관리 앱은 보통 더 많은 목록과 더 정확한 날짜를 요구합니다. 하지만 1인 가구에게 재고 관리는 매일 유지하기 어려운 일이 됩니다.
 
-이 프로젝트는 두 가지 가설을 검증합니다.
-
-1. AI가 영수증을 재고 초안으로 만들고 사용자가 짧게 검수하면 기록 비용이 낮아진다.
-2. 임박 식재료와 남은 음식을 기준으로 메뉴를 제한해 제안하면 재고 관리가 실제 소비 행동으로 이어진다.
-
-## Core flows
+남김없이는 질문을 바꿉니다.
 
 ```text
-영수증 촬영 → AI 품목 초안 → 검수·수정 → 재고 입고
-남은 음식 등록 → 권장 섭취 시점 관리 → 오늘 먼저 먹을 것에 반영
-오늘의 메뉴 선택 → 조리/섭취 완료 → 재료 차감 및 재고 갱신
+“냉장고에 뭐가 있지?”  →  “오늘 먼저 먹을 건 뭐지?”
 ```
 
-## MVP scope
+그래서 이 앱은 재고를 많이 보여 주기보다 **지금 할 행동 하나**를 먼저 보여 줍니다. 영수증은 짧게 검수하고, 남은 음식은 생활 단위로 적고, 메뉴는 이유와 함께 세 개만 제안합니다.
 
-실제로 구현합니다.
+## 데모에서 보여 주는 세 가지 결정
 
-- 영수증 이미지 업로드와 AI 기반 품목 초안
-- `확인 / 수정 / 제외`가 가능한 검수형 입고
-- 재고, 보관 위치, 수량, 날짜, 소진·폐기 이력
-- 남은 배달음식·반찬의 빠른 등록
-- 임박도와 재료 충족도를 반영한 메뉴 3개 추천
-- 조리 완료 후 재료 차감
+| 1. 기록할까? | 2. 무엇을 먼저 먹을까? | 3. 얼마나 남았을까? |
+| --- | --- | --- |
+| 영수증 결과를 확인·수정·제외한 뒤에만 입고합니다. | 임박 재료와 보유 재료를 점수화해 메뉴를 최대 세 개 제안합니다. | `다 먹음` 또는 `반 모`, `조금 남음`처럼 실제 남은 양을 사용자가 확인합니다. |
+| <img src="docs/qa-artifacts/05-quick-add-sheet.png" width="190" alt="영수증, 남은 음식, 직접 추가를 고르는 빠른 추가" /> | <img src="docs/qa-artifacts/01-home-375x812.png" width="190" alt="추천 이유가 보이는 홈 메뉴 카드" /> | <img src="docs/qa-artifacts/07-live-recipe-completion-sheet.png" width="190" alt="조리 뒤 남은 양을 확인하는 완료 시트" /> |
 
-초기에는 구현하지 않습니다.
+### 1) 영수증을 믿기 전에, 사용자가 검수한다
 
-- 냉장고 사진만으로 전체 재고를 자동 인식하는 기능
-- 바코드·상품 DB, 가격 비교, 외부 주문 연동
-- 가족 공유 및 복잡한 권한 관리
-- 자유형 AI 요리 챗, 영양·알레르기 분석, 스마트 냉장고 연동
+```text
+사진 선택 → 품목 초안 → 확인 / 수정 / 제외 → 냉장고 입고
+```
 
-## Design principles
+- 원문, 수량, 보관 위치, 권장 섭취 시점을 바로 고칠 수 있습니다.
+- 낮은 신뢰도 항목은 `AI 추정 · 확인 필요`로 분리합니다.
+- 사용자가 확정하기 전에는 재고와 원장이 바뀌지 않습니다.
 
-- **AI는 자동 확정하지 않는다.** AI는 초안을 만들고, 사용자가 재고 반영을 통제한다.
-- **불확실성을 숨기지 않는다.** 낮은 신뢰도의 인식 결과는 `확인 필요`로 분리한다.
-- **정밀도보다 지속성을 우선한다.** `반 봉지`, `1모`, `2인분`, `조금 남음` 같은 생활 단위를 지원한다.
-- **날짜의 성격을 구분한다.** 포장 표기일과 조리·보관 후 권장 섭취 시점을 혼용하지 않는다.
-- **추천은 설명 가능해야 한다.** 메뉴 카드에 임박 재료, 부족 재료, 조리 시간, 추천 이유를 표시한다.
+### 2) 메뉴는 생성하지 않고, 재고를 근거로 고른다
 
-## Planned stack
+```text
+점수 = 재료 충족도 + 임박 재료 활용 − 부족 재료 − 조리 시간 페널티
+```
 
-- React Native + Expo + TypeScript
-- Expo Router, TanStack Query, React Hook Form, Zod
-- Supabase Auth, PostgreSQL, Storage, Edge Functions
-- Vision/OCR provider for receipt extraction
-- Local notifications for expiry reminders
+추천은 자유형 AI가 아닙니다. 작은 한국어 레시피 카탈로그를 현재 재고와 결정론적으로 매칭합니다. 부족 재료가 두 개를 넘으면 제외하고, 메뉴 카드에는 부족 재료·예상 시간·추천 이유를 함께 보여 줍니다.
 
-## Documentation
+### 3) “썼다”가 아니라, 실제 남은 양을 기록한다
 
-- [Current context / handoff](docs/00-current-context.md)
-- [Product brief](docs/01-product-brief.md)
-- [UX specification](docs/02-ux-specification.md)
-- [Technical design](docs/03-technical-design.md)
-- [Development roadmap](docs/04-development-roadmap.md)
-- [Competitive-analysis notes](docs/05-competitive-analysis.md)
-- [Design direction and system](docs/06-design-direction.md)
-- [Wireframe specification](docs/07-wireframe-specification.md)
+조리 완료 뒤 각 lot를 전량 소비하거나 일부만 사용했다고 확인합니다. `반 봉지`나 `1모`를 임의의 숫자로 바꾸지 않고, 사용자가 입력한 생활 단위를 다음 재고와 원장에 그대로 저장합니다.
 
-## Run locally
+## AI 신뢰 UX: 일부러 하지 않은 것
+
+현재 영수증 분석은 실제 OCR provider를 연결하지 않은 **명시적 fixture**입니다. 앱은 이를 숨기거나 OCR 결과처럼 표현하지 않습니다.
+
+```text
+private 영수증 원본
+      ↓  소유자 · MIME · 실제 바이트 수를 서버에서 재검증
+fixture 초안  ──→  “분석 제공자는 아직 연결 전” 고지
+      ↓  사용자 확인
+재고 lot + intake 원장 확정
+```
+
+이 선택은 기능 부족을 감추지 않기 위한 것입니다. 이 프로젝트가 보여 주려는 것은 OCR 정확도보다 **AI가 틀릴 수 있을 때도 사용자가 통제권을 잃지 않는 제품 경험**입니다.
+
+## 실제로 동작하는 범위
+
+| 영역 | 구현 상태 |
+| --- | --- |
+| 재고 | 보관 위치 필터, 직접 추가·수정·제외, 남은 음식, 전량/부분 소비 |
+| 동기화 | AsyncStorage 로컬 우선 저장, 영속 outbox, 실패·대기 표시와 재시도 |
+| 백엔드 | 익명 인증, 사용자별 RLS, Postgres 재고·원장, private Storage, Edge Function |
+| 입고 정합성 | 동일 영수증 재확정은 `already-confirmed`; lot와 입고 원장을 RPC로 함께 기록 |
+| 조리 정합성 | 동일 조리 세션 재확정은 `already-confirmed`; 부분/전량 차감과 세션 감사를 한 트랜잭션으로 기록 |
+| 추천 | 활성 재고 기반 최대 3개, 현재 데모용 레시피 5개 |
+
+## 데이터가 어긋나지 않게 한 방법
+
+```mermaid
+flowchart LR
+  App[Expo 앱] <--> Cache[AsyncStorage\n로컬 상태 + outbox]
+  App --> Auth[Supabase 익명 인증]
+  App --> Storage[Private receipt-images]
+  App --> Scan[analyze-receipt\nEdge Function]
+  Scan --> Storage
+  App --> ReceiptRPC[입고 RPC]
+  App --> CookingRPC[조리 완료 RPC]
+  ReceiptRPC --> DB[(Postgres\ninventory lots + ledger)]
+  CookingRPC --> DB
+  Cache --> DB
+```
+
+- **입고**: `receipt_intakes(user_id, receipt_id)`를 먼저 선점해 재시도·동시 요청에도 한 번만 확정합니다.
+- **차감**: `cooking_sessions(user_id, id)`를 선점해 같은 조리 세션이 두 번 차감되지 않게 합니다.
+- **보안**: 이미지에는 public URL을 만들지 않고, 사용자 ID 경로와 RLS를 함께 검증합니다.
+- **오프라인**: 로컬 재고와 outbox를 먼저 저장하므로 요청 실패가 기존 재고를 지우지 않습니다.
+
+## 검증 기록
+
+```bash
+npm run lint
+npm run test:domain
+npx tsc --noEmit
+npx expo export --platform web
+```
+
+위 검증과 함께 375 × 812 웹 QA에서 남은 음식 등록, 메뉴 추천, 부분·전량 차감, 앱 재시작 뒤 동기화 복원을 확인했습니다. 새 익명 사용자 Supabase E2E에서는 다음을 확인했습니다.
+
+```text
+private PNG 업로드
+→ ready / fixture
+→ 입고 confirmed
+→ 같은 요청 재시도 already-confirmed
+→ 인증 없는 public 원본 URL은 HTTP 400
+```
+
+## 로컬에서 실행하기
 
 ```bash
 npm install
+cp .env.example .env
 npm run start
 ```
 
-## Status
+`.env`에는 익명 로그인이 활성화된 Supabase 프로젝트의 publishable 연결 정보가 필요합니다.
 
-Expo TypeScript 앱을 초기화했고, 현재 로컬 시드 데이터로 홈·냉장고 화면과 수동 재고 추가·수정·제외·소비 상태 전환을 구현했습니다. Supabase, 영수증 분석, 레시피 점수화는 다음 단계입니다.
+```dotenv
+EXPO_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+```
+
+웹 실행은 `npm run web`을 사용합니다. 별도 Supabase 프로젝트에 연결하려면 [`supabase/migrations`](supabase/migrations)을 시간순으로 적용하고, [`analyze-receipt`](supabase/functions/analyze-receipt/index.ts) Edge Function을 배포해야 합니다. 서비스 역할 키와 OCR 키는 앱 환경 변수에 넣지 않습니다.
+
+## 다음 단계
+
+- iOS·Android 실기기에서 사진 권한과 레이아웃을 검증하고 preview build 만들기
+- 2분 데모 영상으로 영수증 검수 → 메뉴 결정 → 재료 차감을 보여 주기
+- 사용성 테스트로 검수 편집 비용과 추천 근거 다듬기
+
+실제 OCR, 바코드 DB, 가족 공유, 자유형 AI 요리 챗, 영양·알레르기 분석은 이 MVP의 범위 밖입니다.
+
+## 더 읽기
+
+- [현재 상태와 인계](docs/00-current-context.md)
+- [제품 브리프](docs/01-product-brief.md)
+- [UX 명세](docs/02-ux-specification.md)
+- [기술 설계](docs/03-technical-design.md)
+- [개발 로드맵](docs/04-development-roadmap.md)
