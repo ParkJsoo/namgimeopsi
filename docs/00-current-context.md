@@ -75,11 +75,14 @@
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. 포트폴리오 완성도 작업은 README를 기준으로 실기기 사진 권한·레이아웃 QA, preview build, 2분 데모 영상·케이스 스터디 순으로 진행한다. 실제 OCR provider 연결은 별도의 명시적 제품 결정 전까지 하지 않는다.
+2. `docs/08-portfolio-demo.md`에 120초 촬영 대본·준비 조건·케이스 스터디 초안을 작성했다. 실기기 QA·preview build·영상 촬영은 아직 미완료다. 다음에는 사용 가능한 iOS·Android 기기에서 사진 권한·레이아웃 QA를 수행하고 preview build로 이어간다. 기기 준비 전에는 대본으로 웹 데모 리허설·녹화를 진행할 수 있으며 실행 환경을 표시한다. 실제 OCR provider 연결은 별도의 명시적 제품 결정 전까지 하지 않는다.
 3. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
 4. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
 
 ## Last verified repository state
+
+- 2026-09-06 포트폴리오 준비: 시작 시 `feat/live-recommendations`, HEAD `a980ae6 docs: finalize portfolio handoff`, 작업 트리 clean을 확인했다. README에 데모 준비 문서 링크를 추가했다. 앱·OCR 설정·원격 데이터 변경 없이 대본과 케이스 스터디를 준비했으며 이번에 실기기 QA나 Supabase E2E를 재수행하지 않았다. fixture의 고정 날짜·동명 lot·분석 중 OCR처럼 보이는 문구를 촬영 주의점과 알려진 한계로 기록했다. Figma 및 다른 프로젝트 자료는 접근하지 않았다.
+- 이번 문서 변경 검증: README·데모 문서의 로컬 링크, 대본 9구간의 연속성·합계 120초, `npm run test:domain` 14개 테스트를 통과했다. 커밋 메시지는 `docs: prepare portfolio demo and case study`이며 원격 push는 하지 않는다.
 
 - 원격 `main`은 `83254f7 docs: add project handoff context`까지 반영돼 있다.
 - 이전 세션의 로컬 커밋:

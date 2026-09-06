@@ -133,7 +133,7 @@ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 ## 다음 단계
 
 - iOS·Android 실기기에서 사진 권한과 레이아웃을 검증하고 preview build 만들기
-- 2분 데모 영상으로 영수증 검수 → 메뉴 결정 → 재료 차감을 보여 주기
+- [2분 데모 대본·케이스 스터디 초안](docs/08-portfolio-demo.md)을 바탕으로 촬영하기 (영상은 아직 미제작)
 - 사용성 테스트로 검수 편집 비용과 추천 근거 다듬기
 
 실제 OCR, 바코드 DB, 가족 공유, 자유형 AI 요리 챗, 영양·알레르기 분석은 이 MVP의 범위 밖입니다.
