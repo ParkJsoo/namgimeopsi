@@ -9,6 +9,8 @@ pnpm-debug.log*
 .expo/
 dist/
 web-build/
+/ios/
+/android/
 
 # Environment and editor files
 .env

@@ -81,6 +81,10 @@
 
 ## Last verified repository state
 
+- 2026-09-06 실기기 설치 준비: iPhone 13 mini(iOS 26.6, 개발자 모드 enabled)와 갤럭시 SM-F766N(Android 16, adb authorized)의 USB 연결을 확인했다. Xcode 26.6·CocoaPods·Android SDK·JDK 17로 두 플랫폼의 로컬 Debug 빌드를 성공했다. 앱 식별자는 `com.parkjsoo.namgimeopsi`로 지정했고, `npm run ios/android`는 Expo 로컬 빌드 명령으로 변경했다. 자동 생성 `ios/`, `android/`는 Git에서 제외한다.
+- 갤럭시는 APK 설치·실행과 Metro의 Android bundle 로딩을 확인했고 앱 프로세스도 실행 중이다. iPhone은 빌드·설치 뒤 실행 단계에서 iOS의 서명/entitlement/프로파일 신뢰 오류로 차단됐다. 사용자에게 본인의 개발 계정 신뢰 확인을 요청했으며, iOS 앱 실행 성공은 아직 확인 전이다. 사진 권한·레이아웃·세 흐름의 실기기 QA와 독립 실행 preview build는 아직 완료하지 않았다.
+- 실기기 준비 검증: `npx tsc --noEmit`, `npm run lint`, 생성된 iOS `NSPhotoLibraryUsageDescription`의 한국어 문구 일치 확인을 통과했다. Android Debug 빌드 성공, iOS Debug 빌드 0 errors(중복 `-lc++` 링크 경고 1건). OCR provider·키·fixture 고지는 변경하지 않았다. 후속 검증에서는 iPhone 신뢰 확인 후 앱 실행, 두 기기의 홈 표시와 사진 권한부터 확인한다.
+
 - 2026-09-06 포트폴리오 준비: 시작 시 `feat/live-recommendations`, HEAD `a980ae6 docs: finalize portfolio handoff`, 작업 트리 clean을 확인했다. README에 데모 준비 문서 링크를 추가했다. 앱·OCR 설정·원격 데이터 변경 없이 대본과 케이스 스터디를 준비했으며 이번에 실기기 QA나 Supabase E2E를 재수행하지 않았다. fixture의 고정 날짜·동명 lot·분석 중 OCR처럼 보이는 문구를 촬영 주의점과 알려진 한계로 기록했다. Figma 및 다른 프로젝트 자료는 접근하지 않았다.
 - 이번 문서 변경 검증: README·데모 문서의 로컬 링크, 대본 9구간의 연속성·합계 120초, `npm run test:domain` 14개 테스트를 통과했다. 커밋 메시지는 `docs: prepare portfolio demo and case study`이며 원격 push는 하지 않는다.
 

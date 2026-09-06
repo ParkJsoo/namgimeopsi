@@ -130,6 +130,15 @@ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 
 웹 실행은 `npm run web`을 사용합니다. 별도 Supabase 프로젝트에 연결하려면 [`supabase/migrations`](supabase/migrations)을 시간순으로 적용하고, [`analyze-receipt`](supabase/functions/analyze-receipt/index.ts) Edge Function을 배포해야 합니다. 서비스 역할 키와 OCR 키는 앱 환경 변수에 넣지 않습니다.
 
+실기기에 로컬 Debug 앱을 설치하려면 Mac에 Xcode·CocoaPods와 Android SDK·JDK가 필요합니다. iPhone은 개발자 모드 및 개인 개발 서명, Android는 USB 디버깅 연결을 준비합니다.
+
+```bash
+npm run ios -- --device
+npm run android -- --device
+```
+
+앱 식별자는 두 플랫폼 모두 `com.parkjsoo.namgimeopsi`입니다. 네이티브 프로젝트는 Expo가 생성하며 `ios/`, `android/`는 Git에서 제외합니다. JS 수정은 실행 중인 Metro로 반영되지만 네이티브 설정 변경은 재빌드해야 합니다. 이 Debug 실행은 Metro가 필요한 개발 환경이며, 독립 실행 가능한 preview build와 구분합니다.
+
 ## 다음 단계
 
 - iOS·Android 실기기에서 사진 권한과 레이아웃을 검증하고 preview build 만들기
