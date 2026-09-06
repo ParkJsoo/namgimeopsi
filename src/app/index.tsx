@@ -372,6 +372,9 @@ export default function HomeScreen() {
                 <Text style={styles.deleteButtonText}>재고에서 제외</Text>
               </Pressable>
             ) : null}
+            <Pressable accessibilityRole="button" onPress={() => setEditorOpen(false)} style={styles.deleteButton}>
+              <Text style={styles.closeButtonText}>닫기</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -473,4 +476,5 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   deleteButton: { minHeight: 44, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   deleteButtonText: { color: '#B73D32', fontSize: 14, fontWeight: '600' },
+  closeButtonText: { color: '#626B60', fontSize: 14, fontWeight: '600' },
 });
