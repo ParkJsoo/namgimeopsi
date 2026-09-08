@@ -75,10 +75,10 @@
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서, `docs/09-device-qa.md`, `docs/10-android-preview.md`를 읽고 Git 상태를 확인한다. 작업 브랜치는 `feat/live-recommendations`이며 `origin/feat/live-recommendations`를 추적한다.
-2. **새 세션의 작업은 iPhone QA와 iOS 독립 실행 preview 검증이다.** 이번 인계 세션에서 iPhone 작업을 시작하지 않았다. Galaxy 핵심 QA를 처음부터 반복하지 않는다.
-3. iPhone 13 mini의 연결·잠금·개발자 모드·서명을 확인하고 최신 코드로 빌드한다. 기존 테스트 재고를 지우거나 앱을 삭제하지 않는다. 이전 Metro 세션은 재사용 가능 여부를 확인하고 필요할 때만 다시 시작한다.
+2. **iPhone QA를 이어간다.** `cd8b625` 코드로 iOS 로컬 Release 빌드·갱신 설치·Metro 없는 cold launch는 확인했다. 상세는 `docs/11-ios-preview.md`를 따른다. Galaxy 핵심 QA를 처음부터 반복하지 않는다.
+3. iPhone 13 mini / iOS 26.6.1의 연결·잠금·미러링을 확인한다. 최종 설치는 내장 JS를 쓰는 Release로 Metro가 필요 없다. 개발 서명 만료는 2026-09-13 14:32:39 KST이며 필요하면 동일 앱 ID·서명으로 갱신한다. 기존 테스트 재고를 지우거나 앱을 삭제하지 않는다.
 4. 우선 영수증 업로드/분석 중 새 `닫기` 버튼의 실제 표시·터치, 닫기 후 재진입을 확인한다. 이어 세 입력 시트의 본체 한글 키보드·마지막 필드·확정/취소 접근, 남은 음식 저장·조리 부분/전량 차감·재실행 후 유지 등을 `docs/09-device-qa.md`의 미완료 범위에 맞춰 검증한다.
-5. iOS preview는 서명 가능한 로컬 Release 또는 사용 가능한 배포 경로를 확인하고, 실제 설치와 Metro 없는 cold launch로 검증한다. 개발용 Debug/시뮬레이터 결과를 독립 실행 실기기 preview 완료로 기록하지 않는다.
+5. iOS preview는 로컬 Apple Development 서명된 Release의 실제 설치·cold launch까지 확인했다. EAS·TestFlight·스토어 배포가 아니며, 본체 키보드·저장·소비 QA는 별도로 기록한다.
 6. 이후 `docs/08-portfolio-demo.md`의 120초 대본을 리허설하고 영상·케이스 스터디를 마무리한다. 영상 파일/공개 링크는 아직 없다.
 
 ## Session memory and boundaries
@@ -93,13 +93,14 @@
 
 ## Last verified repository state — 2026-09-08 handoff
 
-- 구현 기준: `eca2a79 fix: retry receipt persistence and allow closing progress`. 사용자의 명시적 요청으로 `origin/feat/live-recommendations`에 push했고 upstream을 설정했다. 인계 문서 정리 커밋도 같은 브랜치로 push한다. main 병합·PR 생성·스토어 배포는 하지 않았다. 이전 미push 안내는 이 기록으로 대체한다.
+- **이번 iPhone QA 세션:** 시작 HEAD는 `cd8b625`, clean 상태에서 `origin/feat/live-recommendations`와 일치했다. 새 변경은 별도 요청 전까지 push하지 않는다. iOS Release 설치·Metro 없는 cold launch·기존 냉장 재고 유지·테스트 영수증 fixture 검수 진입을 직접 확인했다. 상세·남은 항목은 `docs/09-device-qa.md`의 최신 iPhone 항목과 `docs/11-ios-preview.md`를 따른다.
+- 이전 인계: 구현 기준 `eca2a79 fix: retry receipt persistence and allow closing progress`와 문서 인계 `cd8b625`는 사용자 요청으로 `origin/feat/live-recommendations`에 push 완료했다. main 병합·PR 생성·스토어 배포는 하지 않았다. 이 이력은 이번 세션의 새 변경에 대한 push 허가가 아니다.
 - **Galaxy 핵심 QA 완료:** SM-F766N / Android 16에서 영수증 검수·5개 입고, 남은 음식 저장, 조리 부분/전량 차감과 재실행 유지, 세 입력 시트의 한글 키보드 유지 스크롤·하단 버튼 접근을 확인했다. 사용자 본체 보고와 에이전트 직접 관찰은 `docs/09-device-qa.md`에 구분했다.
 - **Android 로컬 preview 확인:** JS 내장 arm64 Release를 설치하고 네트워크 없이 cold launch, 오프라인 영수증 실패·온라인 재시도·fixture 고지·키보드 스크롤·취소를 확인했다. 최신 리뷰 수정을 포함해 Release를 재빌드·설치했다. Galaxy 최종 설치는 Release이며 Metro가 필요 없다. 로컬 debug keystore 서명으로 EAS/스토어 배포와 다르다. APK 경로·해시·증거 버전은 `docs/10-android-preview.md`를 따른다.
 - 네트워크 오류 원문 노출은 한국어 재시도 안내로 수정했다. Wi-Fi·모바일 데이터는 테스트 전 켜짐 상태로 복원했다. 수량 손실 의심은 화면 판독 오류였으며 로컬 캐시/인증 REST 대조에서 receipt 두부 `반 모`·시드 두부 `1모`를 확인했다.
 - 전문 에이전트 2명의 리뷰에서 발견한 두 P2를 수정하고 재리뷰했다. 저장 실패 후 같은 영수증 재시도는 재고·outbox를 다시 영속화한 후에만 중복 입고 안내를 반환한다. 업로드·분석 단계에 닫기를 추가했다. 추가 차단 이슈는 발견하지 못했다.
 - 검증 통과: `npm run test:domain` 14개, `npm run test:inventory` 저장 실패/복구 3개, `npm run test:receipts` 날짜·세션 및 진행 중 닫기 4개 경우, `npx tsc --noEmit`, `npm run lint`, Android Release 빌드·설치. 저장 실패/지연 응답은 실제 hook/컴포넌트를 실행하는 모의 저장소·네트워크 테스트이며 본체 저장 공간 부족 재현은 아니다.
-- **iPhone 현재 상태:** iPhone 13 mini / iOS 26.6 Debug 실행, 사진 거부·제한된 접근·fixture 검수·5개 입고는 이전에 확인했다. iOS 26.5 전용 시뮬레이터에서는 한글 키보드와 세 시트를 확인했다. 최신 닫기 버튼의 실제 iPhone 터치, 본체 키보드·저장·소비 및 iOS preview는 아직 남아 있다.
+- **iPhone 현재 상태:** iPhone 13 mini / iOS 26.6.1에 최신 코드의 로컬 Release를 갱신 설치했고 Metro 없이 실행했다. 사진 거부·제한된 접근·fixture 검수·5개 입고는 이전 Debug에서 확인했다. iOS 26.5 전용 시뮬레이터에서는 한글 키보드와 세 시트를 확인했다. 최신 진행 중 닫기와 본체 키보드·저장·소비의 완료 여부는 최신 QA 기록을 따른다.
 - 추가 경계 QA: 실제 HEIC·10MB 경계 이미지, 긴 이름, Galaxy 접힘/펼침 전환. Android 16의 현재 시스템 Photo Picker는 앱 전체 사진 권한을 요청하지 않으므로 iOS식 거부/제한/전체 QA와 구분한다.
 - 후속 동기화 테스트 후보: offline hydrate의 bootstrap 생성 및 pending receipt 재적용 경계. 일반적인 단일 클라이언트 경로에서 수량 손실을 재현하지 못했으므로 확정 결함으로 기록하지 않는다.
 
