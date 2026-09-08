@@ -44,5 +44,5 @@ APK: `android/app/build/outputs/apk/release/app-release.apk` (Git 제외)
 
 - Android 16의 현재 Expo ImagePicker는 시스템 Photo Picker를 쓰며 런타임 사진 읽기 권한 배열이 비어 있다. 설치된 앱도 READ_MEDIA_IMAGES/READ_EXTERNAL_STORAGE를 요청하지 않는다. 따라서 이 빌드에 iOS식 전체/제한/거부 QA를 그대로 적용하지 않는다. [Expo ImagePicker 문서](https://docs.expo.dev/versions/latest/sdk/imagepicker/)와 설치된 네이티브 구현을 확인했다.
 - 실제 HEIC·10MB 경계 이미지, 긴 이름, 접힘/펼침 전환은 이번에 실기기 검증하지 않았다. 기존 사용자가 완료한 세 흐름 저장·차감 QA는 Debug 결과이며 Release에서 세 흐름의 모든 저장을 다시 수행한 것은 아니다.
-- iOS 독립 실행 preview와 영상 촬영은 미완료다.
+- iOS 독립 실행 preview·핵심 QA는 이후 완료했다(`docs/11-ios-preview.md`). 영상 촬영은 남아 있다. iPhone 후속 전문 리뷰의 `e45f128`·`0e49aa6` 공통 코드 수정은 이 Android APK에 포함되지 않으며, 해당 최신 수정의 Android 갱신 설치는 별도다.
 - 코드 리뷰에서 오프라인 hydrate가 빈 outbox에도 bootstrap을 만드는 경로와 기존 receipt pending 재적용의 멱등 의미 차이를 후속 테스트 대상으로 제안했다. 이번 실제 데이터에서 해당 문제나 손실을 재현하지 못했으며 이번 변경에 동기화 로직 수정은 포함하지 않았다.

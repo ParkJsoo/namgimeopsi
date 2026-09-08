@@ -1,5 +1,27 @@
 # 실기기 QA 기록
 
+## iPhone QA 이후 전문 협업 리뷰·수정·재리뷰 (2026-09-08)
+
+사용자 요청으로 iOS 입력·비동기 저장·QA 근거 전문 에이전트 3명이 독립 리뷰했다. QA 완료 주장과 실제 기기/시뮬레이터 xcresult·터치 로그·캐시 대조는 일치했다. 다음 P2 두 건은 로컬에서 재현해 수정했다.
+
+| 문제 | 수정과 회귀 근거 |
+| --- | --- |
+| 로컬 저장 실패 후 공통 `다시 시도`가 복구하지 못함 | `e45f128`: `retrySync`가 현재 재고/outbox를 다시 영속화한 후 전송한다. 실패한 Promise만 기다리던 기존 구현에서 신규 3개 테스트가 모두 실패함을 확인했다. 남은 음식 저장 재시도, 조리 세션 ID·작업 순서 유지, 원격 전송 뒤 dequeue 저장 실패 복구를 검증했다. |
+| 빈 잔량이 있어도 다른 재료만 차감하며 완료됨 | `0e49aa6`: 모든 `남은 양`이 trim 후 유효해야 완료할 수 있다. 빈 필드에 안내하고 버튼·핸들러를 차단한다. 실변경 비교도 trim 후 수행한다. 실제 시트+ledger 테스트에서 빈칸/공백 혼합 lot 차단, 수정 후 두 lot 확정, 한 lot 그대로 유지, 공백만 변경한 단일 lot 차단을 확인했다. |
+
+- 수정 후 다른 에이전트가 두 diff와 테스트를 독립 재리뷰·실행했으며 추가 차단 이슈를 발견하지 못했다. `npm run test:inventory` 6개, 새 `npm run test:recipes`, TypeScript·lint 통과. 기존 domain 14개·receipts 날짜/세션/진행 중 닫기 회귀도 리뷰 시작 시 통과했다. 저장 실패는 실제 hook의 IO 경계만 대체한 메모리 테스트이며 본체 저장 공간 부족을 유발한 결과는 아니다.
+- 수정 코드를 실제 iPhone과 전용 시뮬레이터의 Release로 재빌드·갱신 설치하고 Metro 없이 실행했다. 실제 iPhone XCTest에서 두부 빈 잔량 + 애호박 `다 먹음` 조합의 완료 비활성, 안내, `반 모` 화면 한글 입력 후 활성 복구, 스와이프·하단 버튼 접근·취소를 확인했다. 캡처에서도 비활성/활성 상태를 대조했다.
+- 실제 테스트는 `.expo/ios-review-qa/device-cooking-verified.xcresult`의 `testEmptyRemainingBlocksPartialCompletion` 1개, 0 failures다. 소스·프로젝트·로그·캡처는 같은 Git 제외 디렉터리에 있다. 테스트는 소비 확정 버튼을 누르지 않는다. 전후 캐시는 실제 기기 17개 lot·13개 원장, 시뮬레이터 6개 lot·2개 원장으로 모든 내용이 동일했다.
+- 현재 설치된 iOS 번들 해시는 [iOS preview 기록](11-ios-preview.md)의 최신 리뷰 항목을 따른다. Android 설치 APK는 이번 두 수정 전 버전이며 이번 iPhone 후속에서 갱신하지 않았다. OCR provider/키·원격 설정·기존 재고는 변경하지 않았다. 새 커밋은 push하지 않는다.
+
+### XCTest 재현 시 시작 상태와 증거 버전
+
+- `.expo/ios-gesture-qa/`의 과거 전체 suite를 한 번에 실행하지 않는다. `testReceiptAndLeftoverKeyboardGestures`는 **지정 영수증을 선택해 검수 화면까지 준비한 상태**를 전제로 한다. `-only-testing:GestureQA/GestureQA/testReceiptAndLeftoverKeyboardGestures`로 선택 실행한다. 조리 검증은 홈의 해당 추천/시트가 있는 상태에서 `testCookingKeyboardGesture`만 실행한다.
+- `testFinalInventoryAfterColdLaunch`는 앱을 `activate()`한다. 먼저 별도 `devicectl --terminate-existing`로 종료·재실행하고 Metro 리스너가 없는지 확인하는 단계를 함께 수행해야 독립 실행 검증이다.
+- 초기 시뮬레이터 `receipt.xcresult`의 `testReceiptTouchSwipe`는 후속 편집으로 현재 runner 소스에서 없어졌다. 과거 실행 결과는 남아 있지만 동일 소스 재실행을 보장하지 않는다. 후속 본체 QA 소스는 `.expo/ios-gesture-qa/snapshots/3c8f7d1-GestureQA.swift`에 보존했다.
+- 이번 리뷰 회귀는 별도 `.expo/ios-review-qa/GestureQA.swift`와 프로젝트를 사용하며 `-only-testing:GestureQA/GestureQA/testEmptyRemainingBlocksPartialCompletion`으로 실행한다. 기존 두부·애호박 lot 2개를 가진 실제 iPhone 데이터가 필요하고, 없으면 테스트가 실패하도록 해 두었다. 재고를 생성·초기화해 맞추지 않는다.
+
+
 ## 네이티브 터치 스와이프 후속 QA (2026-09-08, `ce93e4f` 이후)
 
 Computer Use의 Simulator 드래그가 탭처럼 전달되어 목록 이동을 확인하지 못한 문제는 **별도 XCTest UI runner**로 검증 경로를 바꿔 해결했다. 설치된 `com.parkjsoo.namgimeopsi` Release를 `activate()`하고, 좌표의 `press(forDuration: 0.05, thenDragTo:)`로 터치 이동을 보냈다. 앱 소스·저장소를 모의 구현하거나 입력 포커스 자동 스크롤만으로 스와이프를 통과시킨 것이 아니다. 사람의 손가락이 직접 닿았다는 뜻은 아니며, 아래는 에이전트가 실행한 네이티브 터치 자동화 결과다.

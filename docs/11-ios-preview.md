@@ -1,5 +1,14 @@
 # iOS 로컬 preview 검증
 
+## 최신 설치 — 전문 리뷰 수정 후 (`0e49aa6`, 2026-09-08)
+
+- `e45f128`의 로컬 저장 재시도 복구, `0e49aa6`의 조리 빈 잔량 차단을 포함해 기존 명령으로 Release를 재빌드했다. 실제 iPhone은 코드 서명 검증·같은 앱 ID 갱신 설치·Metro 없는 cold launch를 통과했다. 전용 시뮬레이터도 갱신 설치·실행했다.
+- 현재 실제 iPhone `main.jsbundle` SHA-256: `08372835350def07ef0f72043c0d8e705037d50d70a43e529b104b8e87466676`.
+- 현재 시뮬레이터 `main.jsbundle` SHA-256: `270ac9a2c551ab201f9757a0a9e611ebb4455eb07942e737452862eb0f494490`.
+- 산출물 경로는 아래 기존 경로와 같다. 빌드 로그는 `.expo/ios-review-qa/release-build.log`, `simulator-release-build.log`다. 본체 XCTest의 빈 잔량 차단·한글 수정·스와이프·취소를 통과했다. 실제 기기 17개 lot/13개 원장과 시뮬레이터 6개 lot/2개 원장을 보존했다. 상세는 [전문 리뷰 QA](09-device-qa.md)를 따른다.
+- 아래 `cd8b625` 기준 원래 번들과 지연 QA 번들 해시는 과거 증거다. 현재 설치는 이 최신 리뷰 번들이며 OCR provider/키는 연결하지 않았다.
+
+
 ## 환경과 보존 원칙
 
 - 2026-09-08, iPhone 13 mini / iOS 26.6.1. USB 연결·페어링·개발자 모드와 iPhone 미러링 통신을 확인했다.

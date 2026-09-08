@@ -75,14 +75,15 @@
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서, `docs/09-device-qa.md`, `docs/10-android-preview.md`를 읽고 Git 상태를 확인한다. 작업 브랜치는 `feat/live-recommendations`이며 `origin/feat/live-recommendations`를 추적한다.
-2. **iPhone 핵심 QA와 iOS 독립 실행 preview 검증을 완료했다.** `cd8b625` 코드로 iOS 로컬 Release 빌드·갱신 설치·Metro 없는 cold launch는 확인했다. 상세는 `docs/11-ios-preview.md`를 따른다. Galaxy 핵심 QA를 처음부터 반복하지 않는다.
+2. **iPhone 핵심 QA와 iOS 독립 실행 preview 검증을 완료했다.** `cd8b625` 기준 QA 뒤 전문 에이전트 3명의 리뷰에서 발견한 P2 두 건을 `e45f128`·`0e49aa6`로 수정하고 독립 재리뷰했다. 수정 Release를 실제 iPhone·시뮬레이터에 갱신 설치해 Metro 없는 실행을 확인했다. 상세는 `docs/11-ios-preview.md`를 따른다. Galaxy 핵심 QA를 처음부터 반복하지 않는다.
 3. iPhone 13 mini / iOS 26.6.1의 연결·잠금·미러링을 확인한다. 최종 설치는 내장 JS를 쓰는 Release로 Metro가 필요 없다. 개발 서명 만료는 2026-09-13 14:32:39 KST이며 필요하면 동일 앱 ID·서명으로 갱신한다. 기존 테스트 재고를 지우거나 앱을 삭제하지 않는다.
 4. 전용 iOS 26.5 시뮬레이터의 세 시트 한글 조합·키보드 회피에 이어, 실제 iPhone 미러링에서 영수증 끝까지 스크롤·사진 선택 취소/재진입·검수 취소·남은 음식 저장·조리 취소/부분·전량 차감·재실행 유지를 확인했다. 진행 중 닫기·재진입은 시뮬레이터 15초/실제 기기 20초 성공 응답 전달 지연 조건에서 확인했다. 두 앱 모두 지연 없는 원래 Release로 복원했다. 시뮬레이터는 이후 XCTest의 네이티브 터치로 세 시트 스와이프·한글 조합·하단 버튼 전체 접근까지 통과했다. 사용자가 본체 잠금을 해제한 뒤 실제 iPhone에서도 XCTest로 한글 화면 키·네이티브 터치 스와이프·세 시트 하단 버튼·취소를 통과했다. cold launch 후 실제 냉장고 화면과 캐시 17개 lot·13개 원장 불변을 확인했다. 사람의 물리적 손가락 접촉 평가와는 구분한다. 상세는 `docs/09-device-qa.md`를 따른다.
-5. iOS preview는 로컬 Apple Development 서명된 Release의 실제 설치·cold launch와 미러링 저장·소비까지 확인했다. EAS·TestFlight·스토어 배포가 아니다. 본체 키보드·터치 QA 증거는 `.expo/ios-gesture-qa/`의 XCTest 결과에 있다. 재검증이 필요하면 미러링을 종료하고 본체 잠금을 푼 뒤 USB runner를 사용한다. 앱 소스는 바뀌지 않았다.
+5. iOS preview는 로컬 Apple Development 서명된 Release의 실제 설치·cold launch와 미러링 저장·소비까지 확인했다. EAS·TestFlight·스토어 배포가 아니다. 본체 키보드·터치 QA 증거는 `.expo/ios-gesture-qa/`의 XCTest 결과에 있다. 재검증이 필요하면 미러링을 종료하고 본체 잠금을 푼 뒤 USB runner를 사용한다. 최신 리뷰 회귀는 별도 `.expo/ios-review-qa/`에 있다. Android APK는 이번 두 수정 전 버전이므로 Android에서 최신 코드 확인이 필요하면 재빌드·갱신 설치한다.
 6. 이후 `docs/08-portfolio-demo.md`의 120초 대본을 리허설하고 영상·케이스 스터디를 마무리한다. 영상 파일/공개 링크는 아직 없다.
 
 ## Session memory and boundaries
 
+- iOS 키보드·스크롤 QA는 XCTest의 실제 화면 키/터치 제스처를 우선 검토한다. 미러링은 사진 선택·화면 확인에 보조로 사용한다. 일반 드래그가 전달되지 않으면 같은 시도를 오래 반복하지 말고 네이티브 테스트로 전환한다. 사용자에게는 인증·본체 잠금 해제처럼 필요한 조작만 요청한다.
 - 사용자는 실기기 조작을 반복해서 안내받기보다 에이전트가 직접 진행하기를 원한다. Galaxy는 ADB로 화면 캡처·터치·재실행이 가능하다. iPhone은 사용 가능한 미러링/네이티브 제어를 먼저 사용하고, 본체 조작이 꼭 필요한 경우만 요청한다. 시뮬레이터 결과와 본체 결과는 구분한다.
 - 본체 키보드 결과 보고 대신 사용자가 시뮬레이터 검증을 요청해 진행했다. 전용 `Namgimeopsi QA iPhone 13 mini`만 사용했다. `QA SIM 카레 2인분`, 두부 `반 모`, 애호박 `consume-all` 원장을 보존한다. Computer Use의 드래그·휠 한계는 이후 별도 XCTest UI runner로 보완했다. 설치된 Release에 네이티브 터치 스와이프를 보내 세 시트의 한글 조합·키보드 닫힘·하단 버튼 전체 접근을 확인했다. 시뮬레이터 재고 6개·원장 2개는 불변이다.
 - 이후 사용자가 미러링·시뮬레이터를 상황에 맞게 사용해 직접 가능한 본체 QA를 이어가도록 요청했다. 미러링 창을 전면에 올리고 작은 단위로 반복 스크롤하면 실제 iPhone 긴 목록이 이동했다. 탄성 스크롤/시트 애니메이션 직후 좌표를 누르지 말고 멈춘 화면을 재확인한다. 미러링 클립보드·한글 키 전송은 불안정하므로 입력값을 화면에서 확인한 후에만 저장한다.
@@ -94,6 +95,8 @@
 - 이 문서가 저장소의 세션 메모리다. 별도 MEMORY 파일을 만들지 않고 현재 상태와 사용자 선호를 여기에 유지한다.
 
 ## Last verified repository state — 2026-09-08 handoff
+
+- **최신 전문 협업 리뷰:** iOS 입력·비동기 저장·QA 근거 에이전트 3명과 리뷰했다. 로컬 저장 실패 후 공통 재시도 복구(`e45f128`), 조리 빈 잔량으로 일부 재료만 소비되던 경로 차단(`0e49aa6`)을 수정했다. 다른 에이전트의 독립 재리뷰에서 추가 차단 이슈 없음. inventory 6개·새 recipes 회귀·타입·lint 통과. 실제 iPhone XCTest로 빈 입력 차단→한글 수정 후 활성→스와이프·취소를 통과했고 재고/원장 불변을 대조했다. 현재 iOS 설치·해시는 `docs/11-ios-preview.md` 최신 항목을 따른다. 새 변경은 push하지 않는다.
 
 - **이번 iPhone QA 세션:** 시작 HEAD는 `cd8b625`, clean 상태에서 `origin/feat/live-recommendations`와 일치했다. 새 변경은 별도 요청 전까지 push하지 않는다. iOS Release 설치·Metro 없는 cold launch·기존 냉장 재고 유지·테스트 영수증 fixture 검수 진입을 직접 확인했다. 상세·남은 항목은 `docs/09-device-qa.md`의 최신 iPhone 항목과 `docs/11-ios-preview.md`를 따른다.
 - **시뮬레이터 후속:** `bb3258e` 이후 문서 외 영구 소스 변경 없이 전용 iOS 26.5 Release QA를 수행했다. 세 시트 한글 조합, 남은 음식 저장·소비 원장 2건·재실행 유지, 응답 지연 조건의 두 진행 단계 닫기·재진입을 확인했다. 원래 소스·Release를 복원하고 번들 해시 일치·Metro 없는 실행·최종 목록을 재확인했다. 이후 `ce93e4f` 뒤 XCTest 네이티브 터치로 세 시트 스와이프도 검증했다. 실제 본체 결과와는 구분한다.
