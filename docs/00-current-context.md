@@ -75,10 +75,10 @@
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서, `docs/09-device-qa.md`, `docs/10-android-preview.md`를 읽고 Git 상태를 확인한다. 작업 브랜치는 `feat/live-recommendations`이며 `origin/feat/live-recommendations`를 추적한다.
-2. **iPhone QA를 이어간다.** `cd8b625` 코드로 iOS 로컬 Release 빌드·갱신 설치·Metro 없는 cold launch는 확인했다. 상세는 `docs/11-ios-preview.md`를 따른다. Galaxy 핵심 QA를 처음부터 반복하지 않는다.
+2. **iPhone 핵심 QA와 iOS 독립 실행 preview 검증을 완료했다.** `cd8b625` 코드로 iOS 로컬 Release 빌드·갱신 설치·Metro 없는 cold launch는 확인했다. 상세는 `docs/11-ios-preview.md`를 따른다. Galaxy 핵심 QA를 처음부터 반복하지 않는다.
 3. iPhone 13 mini / iOS 26.6.1의 연결·잠금·미러링을 확인한다. 최종 설치는 내장 JS를 쓰는 Release로 Metro가 필요 없다. 개발 서명 만료는 2026-09-13 14:32:39 KST이며 필요하면 동일 앱 ID·서명으로 갱신한다. 기존 테스트 재고를 지우거나 앱을 삭제하지 않는다.
-4. 전용 iOS 26.5 시뮬레이터의 세 시트 한글 조합·키보드 회피에 이어, 실제 iPhone 미러링에서 영수증 끝까지 스크롤·사진 선택 취소/재진입·검수 취소·남은 음식 저장·조리 취소/부분·전량 차감·재실행 유지를 확인했다. 진행 중 닫기·재진입은 시뮬레이터 15초/실제 기기 20초 성공 응답 전달 지연 조건에서 확인했다. 두 앱 모두 지연 없는 원래 Release로 복원했다. 시뮬레이터는 이후 XCTest의 네이티브 터치로 세 시트 스와이프·한글 조합·하단 버튼 전체 접근까지 통과했다. 실제 본체에도 runner를 설치했으나 Xcode가 기기 잠금으로 실행 전 대기했다. 사용자에게 본체 잠금 해제만 요청했고, 이후 입력·스와이프는 에이전트가 같은 네이티브 테스트로 이어간다. 본체 결과는 시뮬레이터 결과로 대체하지 않는다. 상세는 `docs/09-device-qa.md`를 따른다.
-5. iOS preview는 로컬 Apple Development 서명된 Release의 실제 설치·cold launch와 미러링 저장·소비까지 확인했다. EAS·TestFlight·스토어 배포가 아니다. 본체 키보드 후속은 `.expo/ios-gesture-qa/`의 XCTest runner를 사용한다. 미러링 연결 중에는 UI testing 초기화 인증 오류가 나서 미러링을 종료했다.
+4. 전용 iOS 26.5 시뮬레이터의 세 시트 한글 조합·키보드 회피에 이어, 실제 iPhone 미러링에서 영수증 끝까지 스크롤·사진 선택 취소/재진입·검수 취소·남은 음식 저장·조리 취소/부분·전량 차감·재실행 유지를 확인했다. 진행 중 닫기·재진입은 시뮬레이터 15초/실제 기기 20초 성공 응답 전달 지연 조건에서 확인했다. 두 앱 모두 지연 없는 원래 Release로 복원했다. 시뮬레이터는 이후 XCTest의 네이티브 터치로 세 시트 스와이프·한글 조합·하단 버튼 전체 접근까지 통과했다. 사용자가 본체 잠금을 해제한 뒤 실제 iPhone에서도 XCTest로 한글 화면 키·네이티브 터치 스와이프·세 시트 하단 버튼·취소를 통과했다. cold launch 후 실제 냉장고 화면과 캐시 17개 lot·13개 원장 불변을 확인했다. 사람의 물리적 손가락 접촉 평가와는 구분한다. 상세는 `docs/09-device-qa.md`를 따른다.
+5. iOS preview는 로컬 Apple Development 서명된 Release의 실제 설치·cold launch와 미러링 저장·소비까지 확인했다. EAS·TestFlight·스토어 배포가 아니다. 본체 키보드·터치 QA 증거는 `.expo/ios-gesture-qa/`의 XCTest 결과에 있다. 재검증이 필요하면 미러링을 종료하고 본체 잠금을 푼 뒤 USB runner를 사용한다. 앱 소스는 바뀌지 않았다.
 6. 이후 `docs/08-portfolio-demo.md`의 120초 대본을 리허설하고 영상·케이스 스터디를 마무리한다. 영상 파일/공개 링크는 아직 없다.
 
 ## Session memory and boundaries
@@ -97,6 +97,7 @@
 
 - **이번 iPhone QA 세션:** 시작 HEAD는 `cd8b625`, clean 상태에서 `origin/feat/live-recommendations`와 일치했다. 새 변경은 별도 요청 전까지 push하지 않는다. iOS Release 설치·Metro 없는 cold launch·기존 냉장 재고 유지·테스트 영수증 fixture 검수 진입을 직접 확인했다. 상세·남은 항목은 `docs/09-device-qa.md`의 최신 iPhone 항목과 `docs/11-ios-preview.md`를 따른다.
 - **시뮬레이터 후속:** `bb3258e` 이후 문서 외 영구 소스 변경 없이 전용 iOS 26.5 Release QA를 수행했다. 세 시트 한글 조합, 남은 음식 저장·소비 원장 2건·재실행 유지, 응답 지연 조건의 두 진행 단계 닫기·재진입을 확인했다. 원래 소스·Release를 복원하고 번들 해시 일치·Metro 없는 실행·최종 목록을 재확인했다. 이후 `ce93e4f` 뒤 XCTest 네이티브 터치로 세 시트 스와이프도 검증했다. 실제 본체 결과와는 구분한다.
+- **실제 iPhone 네이티브 터치 후속:** `fa47b6d` 이후 사용자 잠금 해제만 받고 에이전트가 세 입력 시트의 화면 한글 조합·키보드 시작 터치 스와이프·하단 버튼 전체 접근·취소를 검증했다. 재고 17개·원장 13개 불변과 Metro 없는 cold launch 후 목록을 재확인했다. 기존 요청의 iPhone 핵심 QA를 완료했고 영구 앱 소스 변경은 없다. 상세는 `docs/09-device-qa.md`의 최신 실제 iPhone 결과다.
 - **실제 iPhone 미러링 후속:** `7d94a61` 이후 직접 저장·차감·취소·재실행 및 작은 단위 스크롤을 확인했다. 새 조리 세션 `cooking-1788860288115-3`의 부분/전량 원장 2건과 기존 lot 보존을 USB 기기 캐시로 대조했다. 최종 lot 17개·원장 13개다. 두 진행 단계 닫기는 20초 성공 응답 전달 지연 조건이며 원래 Release로 복원하고 최초 번들 해시 일치·서명·Metro 없는 재실행을 확인했다. 영구 앱 소스 변경은 없다. 새 문서 커밋은 push하지 않는다.
 - 이전 인계: 구현 기준 `eca2a79 fix: retry receipt persistence and allow closing progress`와 문서 인계 `cd8b625`는 사용자 요청으로 `origin/feat/live-recommendations`에 push 완료했다. main 병합·PR 생성·스토어 배포는 하지 않았다. 이 이력은 이번 세션의 새 변경에 대한 push 허가가 아니다.
 - **Galaxy 핵심 QA 완료:** SM-F766N / Android 16에서 영수증 검수·5개 입고, 남은 음식 저장, 조리 부분/전량 차감과 재실행 유지, 세 입력 시트의 한글 키보드 유지 스크롤·하단 버튼 접근을 확인했다. 사용자 본체 보고와 에이전트 직접 관찰은 `docs/09-device-qa.md`에 구분했다.

@@ -20,11 +20,22 @@ Computer Use의 Simulator 드래그가 탭처럼 전달되어 목록 이동을 �
 
 
 
-### 실제 iPhone 네이티브 runner — 본체 잠금 해제 대기
+### 실제 iPhone 13 mini / iOS 26.6.1 — 통과 (잠금 해제 후)
 
-- 같은 테스트 runner를 기존 개발 팀으로 서명·설치했다. 대상 앱은 기존 Release 그대로이며 runner ID는 `com.parkjsoo.namgimeopsi.gestureqa.xctrunner`다. 지정 테스트 영수증의 fixture 검수 화면을 미러링으로 준비했고 입고하지 않았다.
-- 미러링 연결 상태에서는 UI testing 초기화가 `com.apple.sharing.authentication error 12`로 실패했다. 미러링을 종료한 뒤 USB로 재시도하자 Xcode가 `Unlock … iPhone … to Continue / device is locked`를 명시하며 실행 전 대기했다. 사용자에게 **본체 잠금 해제만** 요청했다. 실제 본체 한글 키보드·터치 스와이프는 아직 통과하지 않았으며, 사용자가 모든 QA를 수동 수행하도록 요청한 상태가 아니다.
-- `.expo/ios-gesture-qa/device-keyboard.log`는 초기화 실패, `device-direct.log`는 잠금 대기를 기록한다. 잠금 해제 뒤 기존 `testReceiptAndLeftoverKeyboardGestures`를 실행하고, 조리 시트를 연 뒤 `testCookingKeyboardGesture`를 별도로 실행하면 된다. runner의 `app.activate()`는 현재 시트를 유지하므로 시작 화면을 확인한다. `device-inventory-before.json`과 종료 후 캐시를 대조한다.
+사용자는 본체 잠금만 해제했다. 이후 미러링을 종료한 상태에서 에이전트가 USB XCTest로 **실제 기기의 화면 한글 키와 터치 스와이프**를 실행했다. 대상 앱은 기존 Release 그대로이며, 별도로 개발 서명된 runner `com.parkjsoo.namgimeopsi.gestureqa.xctrunner`만 설치했다.
+
+| 항목 | 확인 결과 |
+| --- | --- |
+| 영수증 한글·터치 스크롤 | 영문 자판의 `Next keyboard`를 눌러 한글로 전환했다. 화면 자모 `ㅋ·ㅏ·ㄹ·ㅔ`로 초안 이름 `계란카레`를 조합했다. 키보드 위에서 시작한 터치 스와이프 뒤 키보드가 닫히고 첫 이름 필드 Y가 `379 → -6`으로 이동했다. |
+| 영수증 마지막 버튼·취소 | 반복 터치 스와이프로 마지막 돼지고기·`6개 냉장고에 담기`·`아직 저장하지 않을게요` 전체가 화면 안에 있음을 좌표·터치 가능 여부·캡처로 확인하고 취소했다. fixture와 제공자 미연결 고지는 유지됐다. |
+| 남은 음식 한글·버튼 접근 | 화면 자모로 `카레`를 입력했다. 키보드 위에서 스와이프한 뒤 키보드가 닫히고 이름 유지·권장 시점·저장/닫기 전체 접근을 확인했다. 저장 없이 닫았다. |
+| 조리 한글·버튼 접근 | 애호박 두부덮밥에서 두부 남은 양 초안을 화면 자모와 공백 키로 `반 모`로 입력했다. 스와이프 뒤 키보드 닫힘·입력 유지·`재료 사용 완료`/`아직 있어요` 전체 접근을 확인하고 취소했다. 기존 두부 `0.5 block`을 실제 소비·변경하지 않았다. |
+| 재실행·재고 보존 | Metro 8081 리스너 없이 `devicectl --terminate-existing`로 cold launch했다. 실제 냉장고 화면의 `QA iPhone curry 1인분`·두부 `0.5 block`을 확인했다. 기기 캐시는 시작 전후 lot 17개·원장 13개로 모든 내용이 동일했다(배열 순서·동등한 UTC 날짜 표기 정규화). 추가 입고·소비·삭제·초기화는 없다. |
+
+- 성공 결과는 `.expo/ios-gesture-qa/device-hangul.xcresult`(영수증·남은 음식), `device-cooking.xcresult`(조리), `device-final-verified.xcresult`(재실행 후 목록)다. 각 로그와 화면 캡처, `device-inventory-before.json`/`device-inventory-after.json`도 같은 Git 제외 디렉터리에 보존했다. 키보드·하단 버튼 캡처 6장과 최종 냉장고 캡처를 직접 열어 확인했다.
+- 초기 미러링 연결 중에는 UI testing 초기화가 `com.apple.sharing.authentication error 12`로 실패했다. 미러링 종료 후 잠금 해제를 기다려 USB 테스트를 진행했다. 영문 자판에서 한글 키를 찾던 첫 실행은 언어 전환을 추가해 해결했다. 최종 목록 검증의 첫 실패는 실제 재고 행의 접근성 타입 `Other`를 `Button`으로 조회한 테스트 문제였고, 관찰된 타입으로 수정한 뒤 통과했다. 앱 결함이나 통과 결과로 계산하지 않는다.
+- 기존 iOS `on-drag`에 따라 스와이프 시 키보드가 닫힌다. 실제 본체 화면 키보드·네이티브 터치 QA는 완료했으며, 사람 손가락의 물리적 접촉/촉감 평가를 수행했다는 뜻은 아니다. 아래 과거 기록의 본체 키보드·스와이프 미확인 상태는 이 후속 결과로 대체한다.
+- 앱 소스 변경은 필요하지 않았다. 기존 저장·부분/전량 차감·진행 중 닫기·독립 실행 결과와 합쳐 요청된 iPhone 핵심 QA를 완료했다. 실제 HEIC·10MB 경계·네트워크 지연 실패 등 추가 경계 QA는 별도 범위다.
 
 ## 실제 iPhone 미러링 후속 QA (2026-09-08, `7d94a61` 이후)
 

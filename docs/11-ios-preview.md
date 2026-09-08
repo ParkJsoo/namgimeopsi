@@ -52,7 +52,7 @@ xcrun devicectl device process launch \
 - 진행 중 닫기는 성공 응답 전달을 각각 20초 지연한 임시 실제 기기 Release에서 검증했다. 임시 번들 SHA-256은 `464c2e2d64107706d82facc58a1e5e7d5723364de235368b698fa51dcb5e4076`이며 최종 설치가 아니다.
 - 임시 소스는 빌드 직후 복원했다. QA 종료 후 원래 Release를 재빌드하고 `codesign --verify --deep --strict`·갱신 설치·`--terminate-existing` 실행을 완료했다. 최종 산출물 경로와 `main.jsbundle` 해시는 위 최초 실제 기기 Release와 동일하다(`3963a212…c7efdef`). 복원 빌드 로그는 `.expo/ios-preview/device-qa/restored-build.log`다.
 - 로컬 8081 listening 프로세스가 없는 상태에서 홈·냉장 목록을 확인했다. `QA iPhone curry 1인분`, 새 테스트 두부 `0.5 block`과 기존 동명 lot들이 유지됐다. 원래 Release에서 사진 선택 취소·재진입과 새 검수의 정상 취소도 확인했고 추가 입고·소비는 없었다.
-- iPhone의 최종 재고 캐시는 lot 17개·원장 13개로 유지됐다. 본체 한글 화면 키보드·직접 손가락 스와이프·네트워크 지연 실패는 별도 미확인이다.
+- iPhone의 최종 재고 캐시는 lot 17개·원장 13개로 유지됐다. 이후 `fa47b6d` 뒤 실제 본체 한글 화면 키보드·네이티브 터치 스와이프를 XCTest로 검증했고, Metro 없는 cold launch 후 같은 목록·캐시 불변을 재확인했다. 별도 개발 서명된 UI runner를 사용했으며 대상 앱은 기존 Release 그대로다. 결과는 `.expo/ios-gesture-qa/device-hangul.xcresult`, `device-cooking.xcresult`, `device-final-verified.xcresult`에 있다. 사람의 물리적 접촉 평가와 네트워크 지연 실패 재현은 이 결과에 포함하지 않는다.
 
 ## 전용 시뮬레이터 Release — 2026-09-08 후속
 
