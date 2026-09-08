@@ -46,6 +46,14 @@ xcrun devicectl device process launch \
 - 지정된 테스트 영수증을 선택해 실제 업로드 후 검수 진입·`분석 제공자는 아직 연결 전…fixture 초안` 고지를 확인했다. 추가 입고는 확정하지 않았다.
 - 실기기 상호작용 결과는 [기기 QA 기록](09-device-qa.md)에 별도로 기록한다. 미러링 입력과 본체 화면 키보드 입력은 구분한다.
 
+## 실제 iPhone 후속·최종 Release 복원 (2026-09-08)
+
+- `7d94a61` 이후 동일 앱 소스로 실제 iPhone 미러링 QA를 이어가 남은 음식 저장·조리 취소·부분/전량 차감·재실행 유지를 확인했다. 테스트 fixture 6개가 에이전트 조작 실수로 추가 입고된 이력과 보존된 lot는 [기기 QA 기록](09-device-qa.md)에 명시했다.
+- 진행 중 닫기는 성공 응답 전달을 각각 20초 지연한 임시 실제 기기 Release에서 검증했다. 임시 번들 SHA-256은 `464c2e2d64107706d82facc58a1e5e7d5723364de235368b698fa51dcb5e4076`이며 최종 설치가 아니다.
+- 임시 소스는 빌드 직후 복원했다. QA 종료 후 원래 Release를 재빌드하고 `codesign --verify --deep --strict`·갱신 설치·`--terminate-existing` 실행을 완료했다. 최종 산출물 경로와 `main.jsbundle` 해시는 위 최초 실제 기기 Release와 동일하다(`3963a212…c7efdef`). 복원 빌드 로그는 `.expo/ios-preview/device-qa/restored-build.log`다.
+- 로컬 8081 listening 프로세스가 없는 상태에서 홈·냉장 목록을 확인했다. `QA iPhone curry 1인분`, 새 테스트 두부 `0.5 block`과 기존 동명 lot들이 유지됐다. 원래 Release에서 사진 선택 취소·재진입과 새 검수의 정상 취소도 확인했고 추가 입고·소비는 없었다.
+- iPhone의 최종 재고 캐시는 lot 17개·원장 13개로 유지됐다. 본체 한글 화면 키보드·직접 손가락 스와이프·네트워크 지연 실패는 별도 미확인이다.
+
 ## 전용 시뮬레이터 Release — 2026-09-08 후속
 
 사용자 요청으로 `Namgimeopsi QA iPhone 13 mini` / iOS 26.5에서 추가 검증했다. 실제 iPhone 설치와 별도 산출물이며 서명·기기 설치 검증을 대체하지 않는다.
