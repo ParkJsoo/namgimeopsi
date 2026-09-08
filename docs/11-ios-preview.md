@@ -45,3 +45,26 @@ xcrun devicectl device process launch \
 - 갱신 설치 뒤 냉장 목록에서 이전 입고의 계란 `10개`·두부 `1모`·애호박 `1개`와 기존 계란 `9개`·두부 `1모`·애호박 `반 개`를 확인했다. 앱 삭제나 초기화는 하지 않았다.
 - 지정된 테스트 영수증을 선택해 실제 업로드 후 검수 진입·`분석 제공자는 아직 연결 전…fixture 초안` 고지를 확인했다. 추가 입고는 확정하지 않았다.
 - 실기기 상호작용 결과는 [기기 QA 기록](09-device-qa.md)에 별도로 기록한다. 미러링 입력과 본체 화면 키보드 입력은 구분한다.
+
+## 전용 시뮬레이터 Release — 2026-09-08 후속
+
+사용자 요청으로 `Namgimeopsi QA iPhone 13 mini` / iOS 26.5에서 추가 검증했다. 실제 iPhone 설치와 별도 산출물이며 서명·기기 설치 검증을 대체하지 않는다.
+
+```sh
+mkdir -p .expo/ios-simulator-preview
+xcodebuild -workspace ios/app.xcworkspace -scheme app \
+  -configuration Release \
+  -destination 'id=6B38D865-7C34-45E2-9A8E-D425754394D9' \
+  -derivedDataPath .expo/ios-simulator-preview/DerivedData \
+  CODE_SIGNING_ALLOWED=NO build > .expo/ios-simulator-preview/build.log 2>&1
+xcrun simctl install 6B38D865-7C34-45E2-9A8E-D425754394D9 \
+  .expo/ios-simulator-preview/DerivedData/Build/Products/Release-iphonesimulator/app.app
+xcrun simctl launch 6B38D865-7C34-45E2-9A8E-D425754394D9 com.parkjsoo.namgimeopsi
+```
+
+- 빌드·기존 앱 위 설치·내장 JS 실행 성공. 원래 앱을 삭제하거나 시뮬레이터를 초기화하지 않았다.
+- 원래 Release `main.jsbundle` SHA-256: `2e761e1f82d394d58b429c819e897467a407fb5ceee67a9b334fd8ee4f22630b`.
+- [기기 QA 기록](09-device-qa.md)의 영수증·남은 음식·조리 시트 소프트웨어 한글 입력, 저장·부분/전량 차감·종료 후 재실행 유지를 확인했다. 원격 DB 직접 조회 결과는 아니다.
+- 진행 중 닫기 확인에만 성공 응답 전달을 각 15초 지연한 임시 QA 빌드를 사용했다. 해당 번들 해시는 `05418b25221886e4cdef8ada8e9f306511fd1df602ae01c936646cd1c11f2b2f`이며 최종 설치가 아니다. 실제 업로드·fixture 분석은 유지했다. 상세 조건과 늦은 응답 검증은 QA 기록을 따른다.
+- 임시 소스는 빌드 직후 복원했고, 검증 후 원래 소스를 다시 Release 빌드·갱신 설치했다. 최종 산출물은 위 경로이며 해시가 최초 원래 Release와 일치한다. 복원 로그는 `.expo/ios-simulator-preview/restored-build.log`에 있다.
+- 최종 실행 시 Metro를 시작하지 않았고 로컬 8081 listening 프로세스도 없었다. 복원 설치 후 홈과 냉장 목록에서 `QA SIM 카레 2인분`·두부 `반 모`·애호박 활성 목록 제외가 유지됐다. 실제 iPhone의 설치 상태는 이번 시뮬레이터 QA에서 바꾸지 않았다.
