@@ -14,7 +14,7 @@ export function KeyboardSheet({ children }: PropsWithChildren) {
         style={styles.sheet}
         contentContainerStyle={[styles.content, { paddingBottom: Math.max(34, insets.bottom) }]}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag">
+        keyboardDismissMode={Platform.OS === 'android' ? 'none' : 'on-drag'}>
         {children}
       </ScrollView>
     </KeyboardAvoidingView>
