@@ -4,6 +4,7 @@ import { rankRecipes, type Recipe } from './recipe-ranking.ts';
 import { getLiveRecipeRecommendations, projectAvailableFoods } from '../recipes/recommendations.ts';
 import { seedInventory } from '../inventory/seed.ts';
 import {
+  completeCookingSession,
   completeInventoryItems,
   getActiveInventoryItems,
   mergeMissingRecommendationDates,
@@ -147,6 +148,33 @@ test('전량 소비는 활성 재고에서만 제외하고 생활 단위 원장�
   assert(consumptionEvent?.type === 'consume-all', '첫 이벤트는 소비 이벤트');
   equal(consumptionEvent.recipeId, 'chicken-mayo-bowl', '레시피 근거 보존');
   equal(completeInventoryItems(completed, ['leftover-chicken'], { occurredAt: '2026-08-29T13:00:00.000Z' }).events.length, 1, '이미 소비한 lot는 중복 기록하지 않음');
+});
+
+test('조리 세션은 확인한 남은 생활 단위만 부분 차감하고 전량 소비와 함께 원장을 남긴다', () => {
+  const initialState: InventoryState = { version: 2, items: seedInventory, events: [] };
+  const completed = completeCookingSession(
+    initialState,
+    [
+      { itemId: 'eggs', mode: 'remaining', remainingQuantity: '8개' },
+      { itemId: 'leftover-chicken', mode: 'all' },
+      { itemId: 'zucchini', mode: 'remaining', remainingQuantity: '반 개' },
+    ],
+    {
+      sessionId: 'cooking-test-1',
+      occurredAt: '2026-08-29T12:00:00.000Z',
+      recipeId: 'chicken-mayo-bowl',
+      recipeTitle: '치킨마요 덮밥',
+    },
+  );
+
+  equal(completed.items.find((item) => item.id === 'eggs')?.quantity, '8개', '부분 소비 뒤 남은 양 갱신');
+  equal(completed.items.find((item) => item.id === 'zucchini')?.quantity, '반 개', '같은 생활 단위는 추측 없이 유지');
+  equal(getActiveInventoryItems(completed).some((item) => item.id === 'leftover-chicken'), false, '전량 소비 lot만 활성 재고에서 제외');
+  equal(completed.events.length, 2, '바뀌지 않은 남은 양은 원장을 만들지 않음');
+  const partial = completed.events.find((event) => event.type === 'consume');
+  assert(partial?.type === 'consume', '부분 소비 원장이 필요함');
+  equal(partial.remainingQuantityLabel, '8개', '부분 소비 원장에 남은 생활 단위 보존');
+  equal(partial.cookingSessionId, 'cooking-test-1', '조리 세션 연결 보존');
 });
 
 test('저장소 상태는 v1 배열을 v2 원장 상태로 안전하게 이관한다', () => {

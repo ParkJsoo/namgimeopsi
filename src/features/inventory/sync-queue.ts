@@ -23,6 +23,12 @@ export type InventorySyncOperation =
       scanJobId?: string;
       items: InventoryItem[];
       events: InventoryLedgerEvent[];
+    }
+  | {
+      id: string;
+      type: 'commit-cooking-session';
+      items: InventoryItem[];
+      events: InventoryLedgerEvent[];
     };
 
 export function parseInventorySyncQueue(value: unknown): InventorySyncOperation[] {
@@ -56,6 +62,12 @@ export function applyPendingInventorySync(remote: InventoryState, operations: In
       case 'upsert-events':
         return { ...state, events: mergeEvents(state.events, operation.events) };
       case 'commit-receipt':
+        return {
+          ...state,
+          items: mergeItems(state.items, operation.items),
+          events: mergeEvents(state.events, operation.events),
+        };
+      case 'commit-cooking-session':
         return {
           ...state,
           items: mergeItems(state.items, operation.items),

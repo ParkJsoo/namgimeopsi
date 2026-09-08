@@ -26,10 +26,6 @@ export type InventoryDraft = Pick<
   'name' | 'quantity' | 'storage' | 'recommendedUseBy' | 'kind'
 >;
 
-/**
- * 숫자로 안전하게 환산할 수 없는 생활 단위는 그대로 남긴 채, 사용자가 전량 소비를 확정한 사실만 기록한다.
- * Supabase 전환 시 `inventory_events`의 소비 이벤트로 매핑할 로컬 MVP 원장이다.
- */
 export type ConsumeAllInventoryEvent = {
   id: string;
   type: 'consume-all';
@@ -39,6 +35,22 @@ export type ConsumeAllInventoryEvent = {
   occurredAt: string;
   recipeId?: string;
   recipeTitle?: string;
+  cookingSessionId?: string;
+};
+
+/** 실제 사용 뒤 사용자가 확인한 남은 생활 단위를 보존하는 부분 소비 원장이다. */
+export type ConsumeInventoryEvent = {
+  id: string;
+  type: 'consume';
+  inventoryItemId: string;
+  foodName: string;
+  /** 숫자 환산을 강요하지 않아 `일부 사용`처럼 기록한다. */
+  quantityLabel: string;
+  remainingQuantityLabel: string;
+  occurredAt: string;
+  recipeId?: string;
+  recipeTitle?: string;
+  cookingSessionId?: string;
 };
 
 /** 영수증 검수를 사용자가 확정한 뒤에만 남기는 입고 원장이다. */
@@ -54,7 +66,7 @@ export type ReceiptIntakeInventoryEvent = {
   occurredAt: string;
 };
 
-export type InventoryLedgerEvent = ConsumeAllInventoryEvent | ReceiptIntakeInventoryEvent;
+export type InventoryLedgerEvent = ConsumeAllInventoryEvent | ConsumeInventoryEvent | ReceiptIntakeInventoryEvent;
 
 export type InventoryState = {
   version: 2;

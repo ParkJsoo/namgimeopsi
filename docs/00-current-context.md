@@ -8,7 +8,7 @@
 - 목적: AI 신뢰 UX와 모바일 제품 설계/구현 역량을 보여 주는 공개 포트폴리오 프로젝트
 - GitHub: <https://github.com/ParkJsoo/namgimeopsi>
 - 로컬 경로: `/Users/jeongsoopark/develop/namgimeopsi`
-- 구현 상태: Expo TypeScript 앱에서 영수증 검수형 입고, 남은 음식 등록, 메뉴 추천·전량 소비를 구현했다. 재고는 Supabase 익명 사용자별 Postgres에 동기화하고, 기존 AsyncStorage 상태는 최초 원격 시드와 오프라인 캐시로 유지한다. private 원본 이미지·scan job·서버 검증 마이그레이션은 실제 프로젝트에 적용했고 `analyze-receipt` 최신 로컬 원문도 Dashboard에서 배포했다. `service_role`의 `scan_jobs` 상태 전이 권한(UPDATE 및 필터에 필요한 `id`·`user_id`·`status` 컬럼 SELECT)을 실제 Dashboard SQL Editor에 적용했으며, 새 익명 사용자 E2E로 private 업로드 → fixture `ready` → 확정 입고 → 무인증 원본 차단까지 확인했다. OCR provider는 아직 연결하지 않았다.
+- 구현 상태: Expo TypeScript 앱에서 영수증 검수형 입고, 남은 음식 등록, 메뉴 추천·조리/섭취 완료 후 부분·전량 차감을 구현했다. 재고는 Supabase 익명 사용자별 Postgres에 동기화하고, 기존 AsyncStorage 상태는 최초 원격 시드와 오프라인 캐시로 유지한다. private 원본 이미지·scan job·서버 검증 마이그레이션은 실제 프로젝트에 적용했고 `analyze-receipt` 최신 로컬 원문도 Dashboard에서 배포했다. `service_role`의 `scan_jobs` 상태 전이 권한(UPDATE 및 필터에 필요한 `id`·`user_id`·`status` 컬럼 SELECT)을 실제 Dashboard SQL Editor에 적용했으며, 새 익명 사용자 E2E로 private 업로드 → fixture `ready` → 확정 입고 → 무인증 원본 차단까지 확인했다. OCR provider는 아직 연결하지 않았다.
 
 ## Locked decisions
 
@@ -47,11 +47,11 @@
 - `AsyncStorage` 기반 로컬 저장소로 재고를 분리했다. 직접 추가, 수정, 제외, `다 먹음` 처리 후에도 앱을 다시 열면 재고 상태가 유지된다.
 - 홈은 Figma `App Screens > Frame 1`의 밀도에 맞춰 인사·단일 우선 소비 카드·`오늘의 한 끼`·설명 가능한 메뉴 카드로 정렬했다. 375 × 812 Chrome 캡처와 우선 소비 수정·레시피 차감 확인·냉장고 탭·빠른 추가 상호작용 QA를 마쳤고 증거는 `docs/qa-artifacts/`와 루트 `design-qa.md`에 기록했다.
 - 홈의 메뉴 카드는 더 이상 하드코딩되지 않는다. 5개 검수 레시피의 작은 로컬 카탈로그를 현재 활성 재고에 점수화해 최대 3개를 표시하며, 추천 근거와 부족 재료를 함께 보여 준다. 소비 우선도는 ISO 권장 섭취일만 사용하며 표시 문구·구매일·보관 시작일로 안전 상태를 추정하지 않는다.
-- 레시피 완료 시트는 레시피와 전량 소비 대상으로 명시된 보유 재료·생활 단위를 먼저 보여 준다. 사용자가 `다 먹음으로 기록`을 누르면 `consume-all` 로컬 원장을 남기고 활성 재고에서만 제외한다. 수량을 일부만 쓴 경우에는 자동 차감하지 않고 현재의 재고 수정으로 처리한다. 원장은 AsyncStorage v2에 보존되며 기존 v1 재고 배열은 이관한다.
+- 레시피 완료 시트는 레시피와 보유 lot의 현재 생활 단위를 보여 주고, 사용자가 각 lot를 `다 먹음` 또는 `남은 양`으로 확인한다. `반 봉지`, `조금 남음` 등 남긴 양은 수치 환산 없이 보존한다. 전량 소비는 `consume-all` 원장으로 활성 재고에서 제외하고, 부분 소비는 `consume` 원장과 `remainingQuantityLabel`로 lot 수량을 함께 갱신한다. 원장은 AsyncStorage v2에 보존되며 기존 v1 재고 배열은 이관한다.
 - 빠른 추가는 `영수증으로 등록 / 남은 음식 등록 / 직접 추가`를 먼저 고른다. 영수증은 실제 OCR이 아님을 명시한 로컬 fixture를 짧게 분석한 뒤, 확인됨 4개와 `AI 추정 · 확인 필요` 2개를 원문과 함께 검수한다. 이름·생활 단위·보관 위치·권장 섭취 시점을 수정하거나 제외할 수 있고, 사용자가 `N개 냉장고에 담기`를 누르기 전에는 재고와 원장이 바뀌지 않는다.
 - 영수증 확정은 선택한 후보를 개별 재고 lot와 `intake` 원장 이벤트로 같은 로컬 상태에 기록한다. 원문·생활 단위·확정 시각·영수증 batch ID를 보존하며, 같은 batch ID의 재확정은 중복 입고하지 않고 이미 입고했다는 안내를 보여 준다. AsyncStorage 쓰기에 성공한 뒤에만 완료 화면으로 넘어간다.
 - 남은 음식은 식재료와 별도 종류로 등록하며, 기본값은 `냉장 · 1인분 · 지금 보관 시작 · 내일까지 권장`이다. 냉장고 화면은 보관 위치와 전체/남은 음식/오늘 권장 필터를 제공한다.
-- `src/features/domain/`에 다음 순수 함수를 구현했다. 레시피 점수화는 `src/features/recipes/recommendations.ts` 어댑터를 거쳐 활성 로컬 재고와 홈 카드에 연결됐다. 수량 기반 이벤트 함수는 부분 차감 단계까지 순수 함수·단위 테스트로만 유지한다.
+- `src/features/domain/`에 다음 순수 함수를 구현했다. 레시피 점수화는 `src/features/recipes/recommendations.ts` 어댑터를 거쳐 활성 로컬 재고와 홈 카드에 연결됐다. 수량 기반 이벤트 함수는 단위 혼용·초과 소비 방지 단위 테스트의 기준으로 유지하고, 실제 조리 완료는 `complete_cooking_session` RPC와 outbox로 동기화한다.
   - `inventory-events.ts`: 입고·소비·수정·폐기 이벤트로 잔량을 계산하며, 단위 혼용과 초과 소비를 막는다.
   - `date-status.ts`: 권장 섭취 시점을 우선하고 없을 때만 포장 표기일을 보조 기준으로 써 `지남 / 오늘 / 임박 / 여유 / 알 수 없음`을 계산한다. 구매일·보관 시작일만으로 식품 상태를 추정하지 않는다.
   - `recipe-ranking.ts`: 재료 충족도 + 임박 재료 활용 - 부족 재료 - 조리 시간으로 점수화하고, 부족 재료가 2개를 넘는 메뉴를 제외한 상위 3개와 추천 근거를 반환한다.
@@ -64,6 +64,8 @@
 - 로컬 recovery 단위 테스트, 타입 검사·lint·웹 export와 실제 새 익명 사용자 재시도(`confirmed → already-confirmed`)·동시성(`confirmed` 1건 + `already-confirmed` 1건, 변조 payload 재시도 불변성) 검증을 마쳤다. backfill 적용 뒤 같은 익명 재시도·동시성 검증도 다시 통과했으며, 전문 재리뷰에서 추가 병합 차단 이슈는 찾지 못했다.
 - `expo-image-picker`로 선택한 JPG/PNG/HEIC(10MB 이하)는 사용자 ID 경로의 private `receipt-images` bucket에 저장하도록 구현했다. `scan_jobs`에는 원본 경로·MIME·실제 바이트 수·분석 상태만 남기고 공개 URL을 만들지 않는다. `analyze-receipt` Edge Function은 소유자·경로·MIME·용량을 server-side에서 다시 확인한 뒤 fixture 결과만 `ready`로 만든다. OCR provider가 없으므로 앱은 fixture 결과를 명시하고 실제 OCR처럼 표시하지 않는다. `commit_receipt_scan_intake`는 ready scan job만 기존 입고 RPC와 같은 트랜잭션에 연결한다.
 - `20260901010000_receipt_scan_jobs.sql`은 SQL Editor로 실제 프로젝트에 적용했다. `analyze-receipt` 최신 로컬 원문은 Dashboard에 배포되어 있고 `npx --yes deno check supabase/functions/analyze-receipt/index.ts`를 통과했다. `20260902000000_allow_scan_function_state_updates.sql`의 `grant update on table public.scan_jobs to service_role;`를 Dashboard SQL Editor에 적용한 뒤 `has_table_privilege('service_role', 'public.scan_jobs', 'UPDATE') = true`를 재확인했다. 실제 함수의 filtered UPDATE는 PostgreSQL에서 필터 컬럼 SELECT도 요구하므로, `service_role`에 `scan_jobs(id, user_id, status)`만 SELECT하도록 최소 추가 권한을 적용하고 migration에 기록했다. 새 익명 사용자 `8a7afb5a-88f7-4598-bf98-e5a3930b0b27` E2E에서 70-byte PNG를 자기 경로에 private upload하고 uploaded job을 생성했다. `analyze-receipt`는 `ready / fixture / result.provider=fixture`, `commit_receipt_scan_intake`는 `confirmed`, inventory item과 `intake` event는 각 1건으로 검증했다. 같은 원본의 무인증 `/storage/v1/object/public/receipt-images/...` 요청은 HTTP 400으로 차단됐다. OCR provider나 키를 연결하지 않았고, 앱의 `분석 제공자는 아직 연결 전…fixture 초안` 및 `AI 추정 · 확인 필요` 고지는 그대로다. Expo lint 복구를 위해 `eslint`·`eslint-config-expo`를 dev dependency로 명시했으며, Expo 57/TypeScript 6 resolver 호환 문제의 import 규칙은 `tsc --noEmit` 검증으로 대체했다.
+- `20260902145056_add_cooking_session_consumption.sql`을 실제 프로젝트에 적용했다. `complete_cooking_session`은 `SECURITY INVOKER`, authenticated 전용 실행, 사용자별 RLS로 동작하며 세션 선점·부분/전량 소비 event·부분 소비 lot 수량·세션 감사 행을 하나의 트랜잭션에 기록한다. 새 익명 사용자 `66c6b66d-e968-4888-b659-8091b2809992` E2E에서 계란 `9개 → 8개` 부분 소비와 두부 전량 소비를 함께 확정했고, 첫 RPC는 `confirmed`, 동일 session 재호출은 `already-confirmed`, event 2건·session 1건·session item 2건을 확인했다. 앱은 사용 후 남은 양을 직접 확인하게 하며 `반 봉지`·`조금 남음` 같은 생활 단위를 자동 환산하지 않는다.
+- 375px 웹 QA에서 `애호박 두부덮밥`의 조리 완료 시트를 열고, 두부를 `남은 양`으로 바꾼 뒤 `반 모`를 입력해 그대로 표시되는 것을 확인했다. `아직 있어요`로 닫았을 때 재고를 변경하지 않는 상태도 확인했다.
 - 375 × 812 웹 앱은 익명 로그인·초기 동기화 뒤 정상 로드됐고 브라우저 콘솔 오류는 없었다(기존 RN `shadow*` 경고만 있음). 새 익명 세션에서 두 테이블 조회가 모두 HTTP 200으로 성공했고, 초기 시드 재고 5건의 실제 업서트를 확인했다. 새 검증 익명 사용자에서는 RPC 첫 호출 `confirmed`, 재호출 `already-confirmed`, 두 테이블 읽기, 품목 수정·삭제까지 성공했다. 별도 동시성 검증에서는 같은 batch의 서로 다른 두 호출이 `confirmed` 1건과 `already-confirmed` 1건으로 끝났고, 세 번째 변조 payload도 `already-confirmed`를 반환했으며 재고·이벤트 검증 행은 모두 삭제했다.
 - Product Design 플러그인(0.1.52)을 설치했다. 저장된 플러그인 컨텍스트는 아직 없으며, 시각 QA 기준 문서는 루트 `design-qa.md`에 있다. Chrome 375 × 812에서 빠른 추가·영수증 분석·검수·수정·제외·취소·확정 완료·보관 위치별 입고를 QA했고, 재확정 시 중복 입고 없이 `이미 냉장고에 담은 영수증이에요` 안내가 노출되는 것도 확인했다. Figma 원본 프레임은 연결된 Chrome에서 WebGL을 지원하지 않아 열 수 없었고, 차단 증거는 `docs/qa-artifacts/06-figma-webgl-blocked.png`에 있다. Figma Desktop fallback도 Computer Use 연결 시작 실패로 캡처하지 못했다. Figma MCP는 재호출하지 않았다.
 - 검증 완료: `npm run lint`, `npm run test:domain`, `npx tsc --noEmit`, `npx expo export --platform web`, 375 × 812 Chrome 익명 동기화 확인.
@@ -71,9 +73,8 @@
 ## Recommended next session order
 
 1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. 수량 기반 부분 차감과 조리 세션은 영수증 검수 흐름 뒤 별도 작업으로 추가한다. 그전에는 전량 소비와 수동 수량 수정만 지원한다.
-3. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
-4. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
+2. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
+3. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
 
 ## Last verified repository state
 
@@ -104,4 +105,6 @@
   - `7af9ac5 feat(receipts): add private image scan workflow`
   - `3856806 fix(receipts): scope scan lookup to caller`
   - `61a1d7d fix(supabase): allow scan job state updates`
+  - `f495c68 fix(supabase): grant scan state filter access`
+  - `1de928d feat(cooking): record partial consumption sessions`
 - 위 커밋은 아직 원격에 푸시하지 않았다. Figma 변경은 외부 디자인 파일에 반영됐고, 이번 문서 갱신도 별도 작은 커밋으로 기록한다.

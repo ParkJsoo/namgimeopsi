@@ -2,10 +2,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User } from '@supabase/supabase-js';
 import { useEffect, useRef, useState } from 'react';
 
-import { completeInventoryItems, getActiveInventoryItems, mergeMissingRecommendationDates, parseInventoryState, type CompletionContext } from './ledger';
+import {
+  completeCookingSession as completeCookingSessionState,
+  completeInventoryItems,
+  getActiveInventoryItems,
+  mergeMissingRecommendationDates,
+  parseInventoryState,
+  type CompletionContext,
+  type CookingConsumption,
+} from './ledger';
 import { seedInventory } from './seed';
 import { applyPendingInventorySync, createBootstrapInventorySyncOperations, parseInventorySyncQueue, type InventorySyncOperation } from './sync-queue';
-import { commitReceiptIntake, deleteInventoryItem, ensureInventoryUser, loadRemoteInventory, upsertInventoryEvents, upsertInventoryItems } from './supabase-store';
+import { commitCookingSession, commitReceiptIntake, deleteInventoryItem, ensureInventoryUser, loadRemoteInventory, upsertInventoryEvents, upsertInventoryItems } from './supabase-store';
 import type { InventoryDraft, InventoryItem, InventoryState } from './types';
 import { confirmReceiptDraft, isReceiptDraftAlreadyConfirmed, type ReceiptConfirmationResult } from '../receipts/confirm-receipt';
 import type { ReceiptReviewDraft } from '../receipts/types';
@@ -81,6 +89,8 @@ export function useInventory() {
         return upsertInventoryEvents(user, operation.events);
       case 'commit-receipt':
         return commitReceiptIntake(operation.receiptId, operation.items, operation.events, operation.scanJobId);
+      case 'commit-cooking-session':
+        return commitCookingSession(operation.events);
     }
   }
 
@@ -207,6 +217,29 @@ export function useInventory() {
     void queueLocalChange(nextState, { id: createOperationId('upsert-events'), type: 'upsert-events', events: newEvents }).catch(() => setSyncStatus('error'));
   };
 
+  const completeCookingSession = (consumptions: CookingConsumption[], context: Omit<CompletionContext, 'occurredAt'>) => {
+    const previousState = stateRef.current;
+    const sessionId = `cooking-${Date.now()}-${operationSequence + 1}`;
+    const nextState = completeCookingSessionState(previousState, consumptions, {
+      ...context,
+      sessionId,
+      occurredAt: new Date().toISOString(),
+    });
+    const newEvents = nextState.events.slice(previousState.events.length);
+    if (!newEvents.length) return false;
+    const changedItems = nextState.items.filter((item) => {
+      const previous = previousState.items.find((current) => current.id === item.id);
+      return previous?.quantity !== item.quantity;
+    });
+    void queueLocalChange(nextState, {
+      id: createOperationId('commit-cooking-session'),
+      type: 'commit-cooking-session',
+      items: changedItems,
+      events: newEvents,
+    }).catch(() => setSyncStatus('error'));
+    return true;
+  };
+
   const confirmReceipt = async (draft: ReceiptReviewDraft): Promise<ReceiptConfirmationResult> => {
     const previousState = stateRef.current;
     if (isReceiptDraftAlreadyConfirmed(previousState, draft)) return 'already-confirmed';
@@ -241,6 +274,7 @@ export function useInventory() {
     update,
     remove,
     consumeAll,
+    completeCookingSession,
     confirmReceipt,
     retrySync,
   };
