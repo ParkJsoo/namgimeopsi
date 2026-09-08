@@ -34,4 +34,12 @@ PR 2의 공통 재시도 저장 복구와 PR 4의 빈 잔량 차단은 PR 5에�
 4. 로컬 작업 상태가 clean이고 원격 결과와 일치하는지 확인한다. 기존 로컬 main의 미공개 10개 커밋은 feature의 조상으로 포함되므로 조상 관계를 확인한 후 fast-forward만 허용한다.
 5. 기존 앱·테스트 재고 및 OCR 미연결 fixture 고지를 그대로 유지한다.
 
-PR 링크와 실제 병합 상태는 GitHub에서 확인한다.
+## PR 링크
+
+1. [로컬 핵심 흐름 #1](https://github.com/ParkJsoo/namgimeopsi/pull/1)
+2. [재고 동기화 #2](https://github.com/ParkJsoo/namgimeopsi/pull/2)
+3. [영수증 업로드·fixture 분석 #3](https://github.com/ParkJsoo/namgimeopsi/pull/3)
+4. [조리 세션 차감 #4](https://github.com/ParkJsoo/namgimeopsi/pull/4)
+5. [모바일 안정화·QA #5](https://github.com/ParkJsoo/namgimeopsi/pull/5)
+
+실제 병합 상태는 각 PR의 GitHub 상태를 확인한다.
