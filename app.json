@@ -8,9 +8,11 @@
     "scheme": "namgimeopsi",
     "userInterfaceStyle": "light",
     "ios": {
+      "bundleIdentifier": "com.parkjsoo.namgimeopsi",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.parkjsoo.namgimeopsi",
       "adaptiveIcon": {
         "backgroundColor": "#FAF8F4",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

@@ -1,5 +1,5 @@
 import type { InventoryItem, InventoryState } from '../inventory/types.ts';
-import { getIncludedReceiptItems } from './review-draft.ts';
+import { getIncludedReceiptItems, isValidReceiptRecommendedDate } from './review-draft.ts';
 import type { ReceiptDraftItem, ReceiptReviewDraft } from './types.ts';
 
 export type ReceiptConfirmationContext = {
@@ -9,7 +9,7 @@ export type ReceiptConfirmationContext = {
 export type ReceiptConfirmationResult = 'confirmed' | 'already-confirmed' | 'failed';
 
 function isValidIncludedItem(item: ReceiptDraftItem) {
-  return Boolean(item.name.trim() && item.quantity.trim());
+  return Boolean(item.name.trim() && item.quantity.trim()) && isValidReceiptRecommendedDate(item.recommendedUseByAt);
 }
 
 export function canConfirmReceiptDraft(draft: ReceiptReviewDraft) {
@@ -49,7 +49,7 @@ export function confirmReceiptDraft(
     reason:
       item.confidence === 'needs-review'
         ? '영수증 AI 추정을 확인해 입고한 재고예요.'
-        : '영수증에서 읽어 확인한 재고예요.',
+        : '영수증 검수에서 확인한 재고예요.',
     createdAt: context.occurredAt,
   }));
   const events = includedItems.map((item, index) => ({

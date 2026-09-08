@@ -1,11 +1,15 @@
-import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+
+import { KeyboardSheet } from '@/components/KeyboardSheet';
 
 import type { StoragePlace } from '../inventory/types';
 import { receiptReviewFixture } from './fixture';
 import { analyzeReceiptImage, pickReceiptImage, uploadReceiptImage } from './scan-storage';
 import { canConfirmReceiptDraft, type ReceiptConfirmationResult } from './confirm-receipt';
-import { getReceiptReviewCounts, updateReceiptDraftItem } from './review-draft';
+import { getReceiptReviewCounts, isValidReceiptRecommendedDate, updateReceiptDraftItem, updateReceiptRecommendedDate } from './review-draft';
+import { createReviewSession } from './review-session';
+import { getReceiptScanErrorNotice } from './scan-error';
 import type { ReceiptReviewDraft } from './types';
 
 type ReceiptStage = 'choice' | 'uploading' | 'analyzing' | 'review' | 'complete';
@@ -62,26 +66,36 @@ export function ReceiptEntrySheet({
   const [isSaving, setIsSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const reviewSession = useRef(createReviewSession());
+  useEffect(() => {
+    const session = reviewSession.current;
+    if (!visible) session.invalidate();
+    return () => session.invalidate();
+  }, [visible]);
   const counts = getReceiptReviewCounts(draft);
   const canConfirm = canConfirmReceiptDraft(draft) && !isSaving;
 
   const startReceiptReview = async () => {
+    const isCurrent = reviewSession.current.begin();
     setDraft(createReviewDraft());
     setSaveNotice(null);
     setScanNotice(null);
     setStage('uploading');
     try {
       const image = await pickReceiptImage();
+      if (!isCurrent()) return;
       if (!image) {
         setStage('choice');
         return;
       }
 
       const uploaded = await uploadReceiptImage(image);
+      if (!isCurrent()) return;
       setScanNotice('영수증 원본을 내 계정의 비공개 저장소에 보관했어요. 공개 링크는 만들지 않아요.');
       setStage('analyzing');
 
       const analyzed = await analyzeReceiptImage(uploaded.id);
+      if (!isCurrent()) return;
       if (analyzed.status !== 'ready') throw new Error('영수증 분석을 완료하지 못했어요.');
 
       setDraft(
@@ -90,19 +104,17 @@ export function ReceiptEntrySheet({
           sourceLabel: image.fileName ? `선택한 영수증 · ${image.fileName}` : '선택한 영수증',
         }),
       );
-      setScanNotice(
-        analyzed.analysisSource === 'fixture'
-          ? '원본은 비공개로 저장됐어요. 분석 제공자는 아직 연결 전이라, 아래 품목은 검수 UX용 fixture 초안입니다.'
-          : '원본은 비공개로 저장됐어요. 아래 AI 초안은 저장 전에 직접 확인해 주세요.',
-      );
+      setScanNotice('원본은 비공개로 저장됐어요. 분석 제공자는 아직 연결 전이라, 아래 품목은 검수 UX용 fixture 초안입니다.');
       setStage('review');
     } catch (error) {
-      setScanNotice(error instanceof Error ? error.message : '영수증 사진을 준비하지 못했어요. 다시 시도해 주세요.');
+      if (!isCurrent()) return;
+      setScanNotice(getReceiptScanErrorNotice(error));
       setStage('choice');
     }
   };
 
   const resetSheet = () => {
+    reviewSession.current.invalidate();
     setStage('choice');
     setIsSaving(false);
     setSaveNotice(null);
@@ -136,9 +148,11 @@ export function ReceiptEntrySheet({
 
   const finishConfirmation = async () => {
     if (!canConfirm) return;
+    const isCurrent = reviewSession.current.capture();
     setIsSaving(true);
     setSaveNotice(null);
     const result = await onConfirm(draft);
+    if (!isCurrent()) return;
     setIsSaving(false);
     if (result === 'confirmed') {
       setStage('complete');
@@ -153,8 +167,7 @@ export function ReceiptEntrySheet({
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={closeSheet}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+      <KeyboardSheet>
           <View style={styles.handle} />
           {stage === 'choice' ? (
             <>
@@ -184,6 +197,9 @@ export function ReceiptEntrySheet({
               <Text style={styles.analysisLead}>사진은 내 계정의 비공개 저장소에만 보관해요.</Text>
               <Text style={styles.analysisStep}>1. 파일 형식과 크기를 확인하고 있어요</Text>
               <Text style={styles.analysisStep}>2. 분석 작업을 준비하고 있어요</Text>
+              <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>닫기</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -191,20 +207,24 @@ export function ReceiptEntrySheet({
             <View style={styles.analysisBody}>
               <Text style={styles.title}>장 본 것을 정리하고 있어요</Text>
               <Text style={styles.analysisLead}>원본의 소유권·형식·용량을 서버에서 한 번 더 확인해요.</Text>
-              <Text style={styles.analysisStep}>1. 영수증 글자를 읽었어요</Text>
-              <Text style={styles.analysisStep}>2. 상품명을 식재료로 정리하고 있어요</Text>
-              <Text style={styles.analysisStep}>3. 보관 위치와 권장 섭취 시점을 제안할게요</Text>
+              <Text style={styles.analysisStep}>1. 업로드한 파일을 확인하고 있어요</Text>
+              <Text style={styles.analysisStep}>2. 검수용 샘플 품목을 준비하고 있어요</Text>
+              <Text style={styles.analysisStep}>3. 품목과 보관 정보를 직접 확인해 주세요</Text>
+              <Text style={styles.scanNotice}>분석 제공자는 아직 연결 전이에요. 실제 OCR 대신 고정된 fixture 초안을 사용해요.</Text>
               <Text style={styles.analysisNote}>결과는 저장 전에 직접 확인할 수 있어요.</Text>
+              <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>닫기</Text>
+              </Pressable>
             </View>
           ) : null}
 
           {stage === 'review' ? (
             <>
               <Text style={styles.title}>장 본 것 확인</Text>
-              <Text style={styles.copy}>{counts.included}개를 찾았어요. AI가 읽은 결과를 맞는지만 확인해 주세요.</Text>
+              <Text style={styles.copy}>샘플 품목 {counts.included}개를 선택했어요. 저장할 내용을 직접 확인해 주세요.</Text>
               {scanNotice ? <Text style={styles.scanNotice}>{scanNotice}</Text> : null}
               {saveNotice ? <Text accessibilityRole="alert" style={styles.saveNotice}>{saveNotice}</Text> : null}
-              <ScrollView style={styles.reviewScroll} contentContainerStyle={styles.reviewContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.reviewContent}>
                 {(['high', 'needs-review'] as const).map((confidence) => {
                   const sectionItems = draft.items.filter((item) => item.confidence === confidence);
                   if (!sectionItems.length) return null;
@@ -248,15 +268,18 @@ export function ReceiptEntrySheet({
                                 value={item.storage}
                                 onChange={(storage) => setDraft((current) => updateReceiptDraftItem(current, item.id, { storage }))}
                               />
-                              <Text style={styles.fieldLabel}>권장 섭취 시점</Text>
+                              <Text style={styles.fieldLabel}>권장 섭취일 (YYYY-MM-DD, 선택)</Text>
                               <TextInput
                                 accessibilityLabel={`${item.rawName} 권장 섭취 시점`}
-                                value={item.recommendedUseBy}
-                                onChangeText={(recommendedUseBy) =>
-                                  setDraft((current) => updateReceiptDraftItem(current, item.id, { recommendedUseBy }))
+                                value={item.recommendedUseByAt ?? ''}
+                                placeholder="예: 2026-09-20"
+                                autoCorrect={false}
+                                onChangeText={(value) =>
+                                  setDraft((current) => updateReceiptRecommendedDate(current, item.id, value))
                                 }
                                 style={styles.input}
                               />
+                              {!isValidReceiptRecommendedDate(item.recommendedUseByAt) ? <Text accessibilityRole="alert" style={styles.needsReview}>실제 날짜를 YYYY-MM-DD로 입력해 주세요.</Text> : null}
                               {item.labelExpiryAt ? <Text style={styles.dateNote}>포장 표기일 {item.labelExpiryAt}</Text> : null}
                             </>
                           ) : (
@@ -267,7 +290,7 @@ export function ReceiptEntrySheet({
                     </View>
                   );
                 })}
-              </ScrollView>
+              </View>
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ disabled: !canConfirm }}
@@ -294,15 +317,12 @@ export function ReceiptEntrySheet({
               </Pressable>
             </View>
           ) : null}
-        </View>
-      </View>
+      </KeyboardSheet>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(29,33,28,0.35)', justifyContent: 'flex-end' },
-  sheet: { maxHeight: '94%', backgroundColor: '#FAF8F4', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 28 },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#C9C7C1', marginBottom: 18 },
   title: { fontSize: 22, lineHeight: 30, fontWeight: '700', color: '#1D211C' },
   copy: { marginTop: 8, color: '#4D554B', fontSize: 14, lineHeight: 21 },
@@ -320,8 +340,7 @@ const styles = StyleSheet.create({
   analysisLead: { marginTop: 10, color: '#6C7168', fontSize: 13, lineHeight: 19 },
   analysisStep: { marginTop: 18, color: '#1D211C', fontSize: 14, lineHeight: 21, fontWeight: '600' },
   analysisNote: { marginTop: 22, color: '#2F6B4F', fontSize: 13, lineHeight: 19, fontWeight: '600' },
-  reviewScroll: { maxHeight: 480, marginTop: 16 },
-  reviewContent: { paddingBottom: 6 },
+  reviewContent: { marginTop: 16, paddingBottom: 6 },
   reviewGroup: { marginBottom: 18 },
   groupTitle: { marginBottom: 8, color: '#4D554B', fontSize: 13, lineHeight: 18, fontWeight: '700' },
   reviewCard: { padding: 14, marginBottom: 10, borderRadius: 16, backgroundColor: '#FFFFFF' },
