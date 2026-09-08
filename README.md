@@ -141,7 +141,7 @@ npm run android -- --device
 
 ## 다음 단계
 
-- iOS·Android 실기기에서 사진 권한과 레이아웃을 검증하고 preview build 만들기
+- 갤럭시 주요 실기기 QA와 로컬 Release의 Metro 없는 실행을 확인했습니다. [Android preview 빌드·검증 기록](docs/10-android-preview.md)을 참고하세요. iOS preview와 남은 경계 QA는 진행 예정입니다.
 - [2분 데모 대본·케이스 스터디 초안](docs/08-portfolio-demo.md)을 바탕으로 촬영하기 (영상은 아직 미제작)
 - 사용성 테스트로 검수 편집 비용과 추천 근거 다듬기
 

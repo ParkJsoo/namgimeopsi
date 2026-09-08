@@ -9,6 +9,7 @@ import { analyzeReceiptImage, pickReceiptImage, uploadReceiptImage } from './sca
 import { canConfirmReceiptDraft, type ReceiptConfirmationResult } from './confirm-receipt';
 import { getReceiptReviewCounts, isValidReceiptRecommendedDate, updateReceiptDraftItem, updateReceiptRecommendedDate } from './review-draft';
 import { createReviewSession } from './review-session';
+import { getReceiptScanErrorNotice } from './scan-error';
 import type { ReceiptReviewDraft } from './types';
 
 type ReceiptStage = 'choice' | 'uploading' | 'analyzing' | 'review' | 'complete';
@@ -107,7 +108,7 @@ export function ReceiptEntrySheet({
       setStage('review');
     } catch (error) {
       if (!isCurrent()) return;
-      setScanNotice(error instanceof Error ? error.message : '영수증 사진을 준비하지 못했어요. 다시 시도해 주세요.');
+      setScanNotice(getReceiptScanErrorNotice(error));
       setStage('choice');
     }
   };
