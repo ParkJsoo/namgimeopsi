@@ -74,14 +74,13 @@
 
 ## Recommended next session order
 
-- **현재 통합 작업:** 사용자의 2026-09-08 `계획 세우고 PR 구분도 잘해서 진행하자` 요청에 따라 새 커밋 push 및 PR 생성·순차 main 병합을 진행한다. 이전의 push 보류는 이 통합 범위에 한해 해제됐다. 5개 PR 경계·순서·검증 한계는 `docs/12-merge-plan.md`를 따른다. 병합 완료 여부는 해당 PR의 GitHub 상태와 원격 main을 확인한다. 앱 배포·원격 migration 재적용은 이 작업에 포함하지 않는다.
+- **통합 완료:** 기능별 PR #1~#5를 merge commit으로 main에 순차 병합했다. 기준 `14a7977`은 최종 feature tree와 같고 기존 커밋을 모두 포함한다. 계획·PR 링크는 `docs/12-merge-plan.md`를 따른다.
+- **최신 Android 회귀 완료:** `qa/android-final-release`에서 main `14a7977` 코드 그대로 Galaxy Release를 갱신 설치했다. 조리 빈 잔량·한글/스와이프·취소, 오프라인 남은 음식 저장·재실행·연결 복구, 영수증 키보드·취소를 통과했다. 현재 iOS·Android 모두 `e45f128`·`0e49aa6` 수정이 포함돼 있다. APK 해시·기기 데이터 보존 근거는 `docs/10-android-preview.md` 최신 항목을 따른다. QA 완료 당시 문서 커밋은 로컬에 보관했다. 이후 사용자가 push와 병합 검토를 요청했으며, 차단 이슈가 없으면 별도 Android QA PR로 main에 통합하도록 허가했다.
 
-1. `AGENTS.md`와 이 문서, `docs/09-device-qa.md`, `docs/10-android-preview.md`를 읽고 Git 상태를 확인한다. 작업 브랜치는 `feat/live-recommendations`이며 `origin/feat/live-recommendations`를 추적한다.
-2. **iPhone 핵심 QA와 iOS 독립 실행 preview 검증을 완료했다.** `cd8b625` 기준 QA 뒤 전문 에이전트 3명의 리뷰에서 발견한 P2 두 건을 `e45f128`·`0e49aa6`로 수정하고 독립 재리뷰했다. 수정 Release를 실제 iPhone·시뮬레이터에 갱신 설치해 Metro 없는 실행을 확인했다. 상세는 `docs/11-ios-preview.md`를 따른다. Galaxy 핵심 QA를 처음부터 반복하지 않는다.
-3. iPhone 13 mini / iOS 26.6.1의 연결·잠금·미러링을 확인한다. 최종 설치는 내장 JS를 쓰는 Release로 Metro가 필요 없다. 개발 서명 만료는 2026-09-13 14:32:39 KST이며 필요하면 동일 앱 ID·서명으로 갱신한다. 기존 테스트 재고를 지우거나 앱을 삭제하지 않는다.
-4. 전용 iOS 26.5 시뮬레이터의 세 시트 한글 조합·키보드 회피에 이어, 실제 iPhone 미러링에서 영수증 끝까지 스크롤·사진 선택 취소/재진입·검수 취소·남은 음식 저장·조리 취소/부분·전량 차감·재실행 유지를 확인했다. 진행 중 닫기·재진입은 시뮬레이터 15초/실제 기기 20초 성공 응답 전달 지연 조건에서 확인했다. 두 앱 모두 지연 없는 원래 Release로 복원했다. 시뮬레이터는 이후 XCTest의 네이티브 터치로 세 시트 스와이프·한글 조합·하단 버튼 전체 접근까지 통과했다. 사용자가 본체 잠금을 해제한 뒤 실제 iPhone에서도 XCTest로 한글 화면 키·네이티브 터치 스와이프·세 시트 하단 버튼·취소를 통과했다. cold launch 후 실제 냉장고 화면과 캐시 17개 lot·13개 원장 불변을 확인했다. 사람의 물리적 손가락 접촉 평가와는 구분한다. 상세는 `docs/09-device-qa.md`를 따른다.
-5. iOS preview는 로컬 Apple Development 서명된 Release의 실제 설치·cold launch와 미러링 저장·소비까지 확인했다. EAS·TestFlight·스토어 배포가 아니다. 본체 키보드·터치 QA 증거는 `.expo/ios-gesture-qa/`의 XCTest 결과에 있다. 재검증이 필요하면 미러링을 종료하고 본체 잠금을 푼 뒤 USB runner를 사용한다. 최신 리뷰 회귀는 별도 `.expo/ios-review-qa/`에 있다. Android APK는 이번 두 수정 전 버전이므로 Android에서 최신 코드 확인이 필요하면 재빌드·갱신 설치한다.
-6. 이후 `docs/08-portfolio-demo.md`의 120초 대본을 리허설하고 영상·케이스 스터디를 마무리한다. 영상 파일/공개 링크는 아직 없다.
+1. `AGENTS.md`와 이 문서, `docs/09-device-qa.md`, 양쪽 preview 기록을 읽고 Git 상태를 확인한다. 핵심 기기 QA를 처음부터 반복할 필요는 없다.
+2. **다음 작업은 포트폴리오 데모다.** `docs/08-portfolio-demo.md`의 120초 대본을 리허설하고 녹화·편집·케이스 스터디를 마무리한다. 영상 파일/공개 링크는 아직 없다. 기존 재고를 지우지 않고 별도 데모 환경을 사용한다.
+3. iPhone 13 mini / iOS 26.6.1의 현재 설치는 로컬 Apple Development 서명 Release다. 내장 profile 만료는 2026-09-13 14:32:39 KST이므로 이후 촬영에는 동일 앱 ID·서명으로 갱신이 필요할 수 있다. 앱 삭제·초기화는 하지 않는다. EAS·TestFlight·스토어 배포는 별도 범위다.
+4. 추가 경계 QA(HEIC·10MB·긴 이름·Galaxy 접힘 전환)와 실제 타깃 사용자 관찰은 후속이다. 현재 fixture 분석을 실제 OCR 정확도 검증으로 설명하지 않는다.
 
 ## Session memory and boundaries
 
@@ -93,10 +92,12 @@
 - OCR provider/키를 연결하지 않는다. fixture 결과와 `분석 제공자는 아직 연결 전` 고지를 유지한다.
 - `닫기`는 검수 화면을 닫고 늦은 응답을 무효화한다. 진행 중 업로드 중단이나 원격 원본 삭제를 뜻하지 않는다.
 - 테스트 이미지: `~/Downloads/namgimeopsi-test-receipt.png`. iPhone·Galaxy에 사용자가 저장했다. 개인 사진을 새로 업로드하지 않는다.
-- iPhone에는 이전 5개 입고 lot에 더해 **에이전트의 스크롤 중 잘못된 터치로 추가 입고된 fixture 6개**, `QA iPhone curry 1인분`, 새 두부 `0.5 block`·새 애호박 전량 소비 결과가 남아 있다. 실수는 사용자에게 알렸고 해당 batch `receipt-scan-1788857458575-wr12qfzx`를 삭제하지 않았다. Galaxy에는 5개 입고 lot·`QA 카레 2인분`·부분/전량 차감 결과가 남아 있다. 동명 lot는 별도이며 lot ID로 구분한다. 임의 초기화·정리는 하지 않는다.
+- iPhone에는 이전 5개 입고 lot에 더해 **에이전트의 스크롤 중 잘못된 터치로 추가 입고된 fixture 6개**, `QA iPhone curry 1인분`, 새 두부 `0.5 block`·새 애호박 전량 소비 결과가 남아 있다. 실수는 사용자에게 알렸고 해당 batch `receipt-scan-1788857458575-wr12qfzx`를 삭제하지 않았다. Galaxy에는 5개 입고 lot·`QA 카레 2인분`·부분/전량 차감 결과와 최신 `QA Android 카레 1인분`이 남아 있다. 최신 캐시는 lot 12개·원장 7개다. 동명 lot는 별도이며 lot ID로 구분한다. 임의 초기화·정리는 하지 않는다.
 - 이 문서가 저장소의 세션 메모리다. 별도 MEMORY 파일을 만들지 않고 현재 상태와 사용자 선호를 여기에 유지한다.
 
 ## Last verified repository state — 2026-09-08 handoff
+
+- **main 통합 후 Android 후속:** `14a7977`에서 최신 Release를 갱신 설치했다. 기존 lot 11개·원장 7개 내용은 보존됐고 새 leftover 1개만 저장했다. 최종 APK·독립 실행·전후 대조 결과는 `docs/10-android-preview.md` 최상단 최신 설치 항목이 우선한다. 아래 Android 미갱신/이전 설치 언급은 역사 기록이다.
 
 - **최신 전문 협업 리뷰:** iOS 입력·비동기 저장·QA 근거 에이전트 3명과 리뷰했다. 로컬 저장 실패 후 공통 재시도 복구(`e45f128`), 조리 빈 잔량으로 일부 재료만 소비되던 경로 차단(`0e49aa6`)을 수정했다. 다른 에이전트의 독립 재리뷰에서 추가 차단 이슈 없음. inventory 6개·새 recipes 회귀·타입·lint 통과. 실제 iPhone XCTest로 빈 입력 차단→한글 수정 후 활성→스와이프·취소를 통과했고 재고/원장 불변을 대조했다. 현재 iOS 설치·해시는 `docs/11-ios-preview.md` 최신 항목을 따른다. 당시 새 변경은 push를 보류했으며 이후 통합 요청은 위 통합 작업 항목을 따른다.
 
