@@ -66,6 +66,13 @@
 - [Design direction and system](docs/06-design-direction.md)
 - [Wireframe specification](docs/07-wireframe-specification.md)
 
+## Run locally
+
+```bash
+npm install
+npm run start
+```
+
 ## Status
 
-Documentation and product definition are complete. Implementation has not started yet.
+Expo TypeScript 앱을 초기화했고, 현재 로컬 시드 데이터로 홈·냉장고 화면과 수동 재고 추가·수정·제외·소비 상태 전환을 구현했습니다. Supabase, 영수증 분석, 레시피 점수화는 다음 단계입니다.
