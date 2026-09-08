@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import type { InventoryDraft, StoragePlace } from '../inventory/types';
+import type { StoragePlace } from '../inventory/types';
 import { receiptReviewFixture } from './fixture';
 import { canConfirmReceiptDraft, type ReceiptConfirmationResult } from './confirm-receipt';
 import { getReceiptReviewCounts, updateReceiptDraftItem } from './review-draft';
@@ -54,14 +54,6 @@ export function ReceiptEntrySheet({
   const canConfirm = canConfirmReceiptDraft(draft) && !isSaving;
 
   useEffect(() => {
-    if (!visible) {
-      setStage('choice');
-      setIsSaving(false);
-      setSaveNotice(null);
-    }
-  }, [visible]);
-
-  useEffect(() => {
     if (stage !== 'analyzing') return;
     const timer = setTimeout(() => setStage('review'), 900);
     return () => clearTimeout(timer);
@@ -71,6 +63,37 @@ export function ReceiptEntrySheet({
     setDraft(createReviewDraft());
     setSaveNotice(null);
     setStage('analyzing');
+  };
+
+  const resetSheet = () => {
+    setStage('choice');
+    setIsSaving(false);
+    setSaveNotice(null);
+  };
+
+  const closeSheet = () => {
+    resetSheet();
+    onClose();
+  };
+
+  const openDirectAdd = () => {
+    resetSheet();
+    onDirectAdd();
+  };
+
+  const openLeftoverAdd = () => {
+    resetSheet();
+    onLeftoverAdd();
+  };
+
+  const goHome = () => {
+    resetSheet();
+    onGoHome();
+  };
+
+  const goInventory = () => {
+    resetSheet();
+    onGoInventory();
   };
 
   const finishConfirmation = async () => {
@@ -91,7 +114,7 @@ export function ReceiptEntrySheet({
   };
 
   return (
-    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
+    <Modal animationType="slide" transparent visible={visible} onRequestClose={closeSheet}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.handle} />
@@ -102,15 +125,15 @@ export function ReceiptEntrySheet({
               <Pressable accessibilityRole="button" onPress={startReceiptReview} style={styles.primaryButton}>
                 <Text style={styles.primaryButtonText}>영수증으로 등록</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={onLeftoverAdd} style={styles.optionButton}>
+              <Pressable accessibilityRole="button" onPress={openLeftoverAdd} style={styles.optionButton}>
                 <Text style={styles.optionTitle}>남은 음식 등록</Text>
                 <Text style={styles.optionCopy}>조리·보관 시작일을 기준으로 직접 적어요.</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={onDirectAdd} style={styles.optionButton}>
+              <Pressable accessibilityRole="button" onPress={openDirectAdd} style={styles.optionButton}>
                 <Text style={styles.optionTitle}>직접 추가</Text>
                 <Text style={styles.optionCopy}>식재료와 남은 양을 바로 적어요.</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={onClose} style={styles.secondaryButton}>
+              <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.secondaryButton}>
                 <Text style={styles.secondaryButtonText}>닫기</Text>
               </Pressable>
             </>
@@ -204,7 +227,7 @@ export function ReceiptEntrySheet({
                 style={[styles.primaryButton, !canConfirm && styles.primaryButtonDisabled]}>
                 <Text style={styles.primaryButtonText}>{isSaving ? '냉장고에 담는 중…' : `${counts.included}개 냉장고에 담기`}</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={onClose} style={styles.secondaryButton}>
+              <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.secondaryButton}>
                 <Text style={styles.secondaryButtonText}>아직 저장하지 않을게요</Text>
               </Pressable>
             </>
@@ -214,10 +237,10 @@ export function ReceiptEntrySheet({
             <View style={styles.completeBody}>
               <Text style={styles.title}>{counts.included}개를 냉장고에 담았어요.</Text>
               <Text style={styles.copy}>두부처럼 먼저 쓰기 좋은 재료는 홈 추천에서 바로 확인할 수 있어요.</Text>
-              <Pressable accessibilityRole="button" onPress={onGoHome} style={styles.primaryButton}>
+              <Pressable accessibilityRole="button" onPress={goHome} style={styles.primaryButton}>
                 <Text style={styles.primaryButtonText}>오늘의 한 끼 보기</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={onGoInventory} style={styles.secondaryButton}>
+              <Pressable accessibilityRole="button" onPress={goInventory} style={styles.secondaryButton}>
                 <Text style={styles.secondaryButtonText}>냉장고 목록으로</Text>
               </Pressable>
             </View>
