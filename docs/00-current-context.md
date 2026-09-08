@@ -74,76 +74,33 @@
 
 ## Recommended next session order
 
-1. `AGENTS.md`와 이 문서를 읽고 Git 상태를 확인한다.
-2. `docs/08-portfolio-demo.md`에 120초 촬영 대본·준비 조건·케이스 스터디 초안을 작성했다. 실기기 QA·preview build·영상 촬영은 아직 미완료다. 다음에는 사용 가능한 iOS·Android 기기에서 사진 권한·레이아웃 QA를 수행하고 preview build로 이어간다. 기기 준비 전에는 대본으로 웹 데모 리허설·녹화를 진행할 수 있으며 실행 환경을 표시한다. 실제 OCR provider 연결은 별도의 명시적 제품 결정 전까지 하지 않는다.
-3. Figma 보정은 앱 구현을 막지 않는다. 최종 발표 전 시각 보정이 필요할 때만 WebGL 가능한 Browser 또는 복구된 Computer Use 연결로 다시 확인하며, Figma MCP는 재시도하지 않는다.
-4. 구현 중 제품/UX 결정이 바뀌면 관련 명세와 이 문서를 함께 갱신한다.
+1. `AGENTS.md`와 이 문서, `docs/09-device-qa.md`, `docs/10-android-preview.md`를 읽고 Git 상태를 확인한다. 작업 브랜치는 `feat/live-recommendations`이며 `origin/feat/live-recommendations`를 추적한다.
+2. **새 세션의 작업은 iPhone QA와 iOS 독립 실행 preview 검증이다.** 이번 인계 세션에서 iPhone 작업을 시작하지 않았다. Galaxy 핵심 QA를 처음부터 반복하지 않는다.
+3. iPhone 13 mini의 연결·잠금·개발자 모드·서명을 확인하고 최신 코드로 빌드한다. 기존 테스트 재고를 지우거나 앱을 삭제하지 않는다. 이전 Metro 세션은 재사용 가능 여부를 확인하고 필요할 때만 다시 시작한다.
+4. 우선 영수증 업로드/분석 중 새 `닫기` 버튼의 실제 표시·터치, 닫기 후 재진입을 확인한다. 이어 세 입력 시트의 본체 한글 키보드·마지막 필드·확정/취소 접근, 남은 음식 저장·조리 부분/전량 차감·재실행 후 유지 등을 `docs/09-device-qa.md`의 미완료 범위에 맞춰 검증한다.
+5. iOS preview는 서명 가능한 로컬 Release 또는 사용 가능한 배포 경로를 확인하고, 실제 설치와 Metro 없는 cold launch로 검증한다. 개발용 Debug/시뮬레이터 결과를 독립 실행 실기기 preview 완료로 기록하지 않는다.
+6. 이후 `docs/08-portfolio-demo.md`의 120초 대본을 리허설하고 영상·케이스 스터디를 마무리한다. 영상 파일/공개 링크는 아직 없다.
 
-## Last verified repository state
+## Session memory and boundaries
 
-- 전문 리뷰의 두 P2 수정 완료: `confirmReceipt`는 메모리에 동일 입고가 있어도 재고·outbox 영속화를 다시 시도한 뒤에만 `already-confirmed`를 반환한다. 저장 실패 반복은 계속 `failed`이며 복구 후 중복 없이 전송된다. 영수증 업로드·분석 단계에 `닫기`를 추가해 기존 세션 무효화 경로로 연결했다. 업로드 자체 중단/원본 삭제는 추가하지 않았다. 실제 hook 저장 실패·복구 3개 테스트와 실제 컴포넌트 지연 성공/실패 후 닫기 4개 테스트, 기존 도메인·영수증 테스트, TypeScript·lint가 통과했고 전문 에이전트 2명의 재리뷰에서 추가 차단 사항을 찾지 못했다. Android Release 재빌드·재설치 완료. 실제 iPhone에서 진행 중 닫기 버튼 표시·터치 확인은 다음 네이티브 QA 항목이다.
+- 사용자는 실기기 조작을 반복해서 안내받기보다 에이전트가 직접 진행하기를 원한다. Galaxy는 ADB로 화면 캡처·터치·재실행이 가능하다. iPhone은 사용 가능한 미러링/네이티브 제어를 먼저 사용하고, 본체 조작이 꼭 필요한 경우만 요청한다. 시뮬레이터 결과와 본체 결과는 구분한다.
+- **Figma 및 withnetworks 관련 파일·워크스페이스는 읽거나 조작하지 않는다.** 앞의 디자인 이력은 과거 기록이며 접근 허가가 아니다.
+- OCR provider/키를 연결하지 않는다. fixture 결과와 `분석 제공자는 아직 연결 전` 고지를 유지한다.
+- `닫기`는 검수 화면을 닫고 늦은 응답을 무효화한다. 진행 중 업로드 중단이나 원격 원본 삭제를 뜻하지 않는다.
+- 테스트 이미지: `~/Downloads/namgimeopsi-test-receipt.png`. iPhone·Galaxy에 사용자가 저장했다. 개인 사진을 새로 업로드하지 않는다.
+- iPhone에는 이전 5개 입고 lot, Galaxy에는 5개 입고 lot·`QA 카레 2인분`·부분/전량 차감 결과가 남아 있다. 동명 lot는 별도이며, 수량 확인은 lot ID로 구분한다. 임의 초기화·정리는 하지 않는다.
+- 이 문서가 저장소의 세션 메모리다. 별도 MEMORY 파일을 만들지 않고 현재 상태와 사용자 선호를 여기에 유지한다.
 
-- Android 로컬 preview 후속 검증: SM-F766N에 JS 내장 Release APK를 설치하고 Wi-Fi/모바일 데이터 없이 cold launch했다. 오프라인 사진 업로드에서 DNS 오류 원문 노출을 발견해 `scan-error.ts`로 사용자용 재시도 안내를 적용했고, Release에서 새 안내·온라인 복구 후 fixture 검수·키보드 유지 스크롤·취소를 확인했다. 네트워크는 원래 켜짐 상태로 복원했다. 두부 수량 의심은 화면 판독 오류였으며 로컬 캐시와 사용자 인증 REST 모두 해당 receipt lot `반 모`를 유지한다. 빌드 방법·해시·증거·남은 범위는 `docs/10-android-preview.md`를 따른다. 최종 Galaxy 설치는 로컬 Release이며 EAS/스토어 배포는 아니다. TypeScript·lint 및 오류 안내 분기 검사를 통과했다. 다음은 남은 경계 QA와 iOS preview/데모 촬영 준비다.
+## Last verified repository state — 2026-09-08 handoff
 
-- Galaxy 최신 QA: 사용자가 조리 완료에서 두부 `반 모` 부분 차감·애호박 전량 차감 및 종료·재실행 후 유지까지 확인했다. 에이전트도 ADB 화면에서 두부 `반 모`·`QA 카레 2인분`을 확인하고 사진 선택 취소→등록 방식 복귀→선택기 재진입을 직접 검증했다. 상세 증거 범위는 `docs/09-device-qa.md`를 따른다. 앞으로 가능한 실기기 조작은 ADB로 직접 수행하며 사용자에게 반복 위임하지 않는다. 남은 사진 권한·오류 복구 QA와 Metro 없는 preview 검증으로 이어간다.
+- 구현 기준: `eca2a79 fix: retry receipt persistence and allow closing progress`. 사용자의 명시적 요청으로 `origin/feat/live-recommendations`에 push했고 upstream을 설정했다. 인계 문서 정리 커밋도 같은 브랜치로 push한다. main 병합·PR 생성·스토어 배포는 하지 않았다. 이전 미push 안내는 이 기록으로 대체한다.
+- **Galaxy 핵심 QA 완료:** SM-F766N / Android 16에서 영수증 검수·5개 입고, 남은 음식 저장, 조리 부분/전량 차감과 재실행 유지, 세 입력 시트의 한글 키보드 유지 스크롤·하단 버튼 접근을 확인했다. 사용자 본체 보고와 에이전트 직접 관찰은 `docs/09-device-qa.md`에 구분했다.
+- **Android 로컬 preview 확인:** JS 내장 arm64 Release를 설치하고 네트워크 없이 cold launch, 오프라인 영수증 실패·온라인 재시도·fixture 고지·키보드 스크롤·취소를 확인했다. 최신 리뷰 수정을 포함해 Release를 재빌드·설치했다. Galaxy 최종 설치는 Release이며 Metro가 필요 없다. 로컬 debug keystore 서명으로 EAS/스토어 배포와 다르다. APK 경로·해시·증거 버전은 `docs/10-android-preview.md`를 따른다.
+- 네트워크 오류 원문 노출은 한국어 재시도 안내로 수정했다. Wi-Fi·모바일 데이터는 테스트 전 켜짐 상태로 복원했다. 수량 손실 의심은 화면 판독 오류였으며 로컬 캐시/인증 REST 대조에서 receipt 두부 `반 모`·시드 두부 `1모`를 확인했다.
+- 전문 에이전트 2명의 리뷰에서 발견한 두 P2를 수정하고 재리뷰했다. 저장 실패 후 같은 영수증 재시도는 재고·outbox를 다시 영속화한 후에만 중복 입고 안내를 반환한다. 업로드·분석 단계에 닫기를 추가했다. 추가 차단 이슈는 발견하지 못했다.
+- 검증 통과: `npm run test:domain` 14개, `npm run test:inventory` 저장 실패/복구 3개, `npm run test:receipts` 날짜·세션 및 진행 중 닫기 4개 경우, `npx tsc --noEmit`, `npm run lint`, Android Release 빌드·설치. 저장 실패/지연 응답은 실제 hook/컴포넌트를 실행하는 모의 저장소·네트워크 테스트이며 본체 저장 공간 부족 재현은 아니다.
+- **iPhone 현재 상태:** iPhone 13 mini / iOS 26.6 Debug 실행, 사진 거부·제한된 접근·fixture 검수·5개 입고는 이전에 확인했다. iOS 26.5 전용 시뮬레이터에서는 한글 키보드와 세 시트를 확인했다. 최신 닫기 버튼의 실제 iPhone 터치, 본체 키보드·저장·소비 및 iOS preview는 아직 남아 있다.
+- 추가 경계 QA: 실제 HEIC·10MB 경계 이미지, 긴 이름, Galaxy 접힘/펼침 전환. Android 16의 현재 시스템 Photo Picker는 앱 전체 사진 권한을 요청하지 않으므로 iOS식 거부/제한/전체 QA와 구분한다.
+- 후속 동기화 테스트 후보: offline hydrate의 bootstrap 생성 및 pending receipt 재적용 경계. 일반적인 단일 클라이언트 경로에서 수량 손실을 재현하지 못했으므로 확정 결함으로 기록하지 않는다.
 
-- Galaxy 영수증 입고: 사용자가 테스트 영수증에서 돼지고기 제외 → 5개 확정 → 완료 화면 및 냉장(계란·두부·애호박)/냉동(만두)/실온(참기름) 목록 확인 절차를 수행했다고 보고했다. 사용자 본체 보고 기준으로 확정 입고·목록 표시는 통과이며 테스트 lot는 유지한다. 별도 원격 조회나 멱등성 재검증은 하지 않았다. 바로 다음은 조리 완료의 두부 부분 차감·애호박 전량 차감과 재실행 후 유지 확인이다. 동명 lot가 별도로 있으므로 전량 차감 후에도 같은 이름의 다른 lot는 남을 수 있다.
-
-- Galaxy 남은 음식 저장: 사용자가 `QA 카레`·`2인분`·`냉장`으로 저장한 뒤 냉장고 목록에 표시됨을 확인했다. 사용자 본체 보고 기준으로 저장·목록 표시는 통과이며 테스트 항목은 유지한다. 이후 사용자가 최근 앱에서 종료·재실행한 뒤에도 `QA 카레 · 2인분`이 그대로 보인다고 확인해 재실행 후 유지까지 통과했다. 바로 다음은 영수증 검수 확정 입고·목록 반영 확인이다. 원격 동기화 완료는 별도 검증하지 않았다.
-
-- Galaxy 조리 시트 후속 확인: 사용자가 애호박 두부덮밥에서 두부의 남은 양 `반 모` 입력 후 키보드를 유지한 채 `재료 사용 완료`·`아직 있어요`가 모두 보인다고 보고했다. 세 입력 시트의 키보드 스크롤·하단 버튼 접근은 본체 QA 통과다. 소비 확정·상태 유지는 이번에 확인하지 않았다. 다음은 남은 음식 저장·재진입, 영수증 확정 입고, 조리 부분/전량 차감의 실기기 상태 변경 검증이며 preview build는 그 뒤 진행한다.
-
-- Galaxy 영수증 후속 확인: 사용자가 테스트 영수증 선택 → 검수 품목 이름에서 키보드 열기 → 끝까지 스크롤 후 `6개 냉장고에 담기`·`아직 저장하지 않을게요` 표시를 확인했다. 사용자 본체 보고 기준으로 검수 시트의 키보드 스크롤·버튼 접근은 통과이며 입고 확정은 확인하지 않았다. 조리 완료 시트의 후속 결과는 위 최신 항목을 따른다.
-
-- Galaxy 스크롤 후속 수정: 전문 리뷰로 Android `on-drag`의 강제 키보드 닫기를 확인해 Android만 `keyboardDismissMode="none"`으로 변경했다. 연결된 SM-F766N의 ADB 스와이프·화면 캡처에서 한글 키보드를 유지한 채 남은 음식의 마지막 필드·저장·닫기 전체 노출을 확인했다. 저장은 하지 않았다. TypeScript·lint·diff 검사를 통과했다. 사용자가 본체에서도 스크롤이 잘 되고 끝까지 내리면 버튼 전체가 보인다고 재확인했다. 남은 음식 시트의 키보드 스크롤 QA는 통과했다. 영수증·조리 시트 후속 결과는 위 최신 항목을 따른다.
-
-- 2026-09-08 Galaxy 후속 QA: SM-F766N / Android 16에 로컬 Debug 앱을 다시 빌드·설치했다. 사용자가 남은 음식 입력 시 키보드 가림·스크롤 불가를 보고했다. 공용 `KeyboardSheet`의 Android 키보드 회피를 미지정에서 `height`로 변경했다. 다음 작업은 갤럭시 본체에서 마지막 입력란과 저장/닫기까지 스크롤, 키보드 닫기/재열기, 영수증·조리 완료 시트 회귀 확인이다. 당시에는 수정 후 실기기 확인 전이었으며, 후속 스크롤 수정과 본체 확인 결과는 위 항목을 따른다. 사진 QA·preview는 남아 있다.
-
-- 2026-09-08 리뷰 수정: 영수증 권장 섭취일을 선택적 `YYYY-MM-DD` 입력으로 변경해 표시·추천 날짜를 함께 갱신하고 잘못된 달력 날짜의 확정을 차단했다. 빈 날짜는 미지정으로 저장하며 포장 표기일은 유지한다. 이전 검수를 닫거나 새 요청을 시작하면 기존 요청 세션을 무효화해 늦은 사진 선택·업로드·분석·확정 응답이 새 화면을 덮지 않게 했다. 진행 중 원격 업로드 자체의 취소/삭제 기능을 추가한 것은 아니다. 분석·검수 문구를 fixture에 맞게 통일했고 OCR provider/키는 연결하지 않았다.
-- 세 입력 시트를 공용 `KeyboardSheet`로 통합했다. 전용 iPhone 13 mini / iOS 26.5 시뮬레이터에서 소프트웨어 한글 키보드 조합, 마지막 필드 표시, 스와이프 후 확정·취소 접근 및 저장 없이 닫기를 확인했다. 영수증 날짜 오류·정정의 버튼 상태도 확인했다. 상세와 샘플 이미지 사용 한계는 `docs/09-device-qa.md`에 기록했다. 실제 본체·갤럭시 키보드 및 preview QA는 아직 남아 있다.
-- 이번 검증: 기존 도메인 14개 테스트, 새 날짜·지연 응답 테스트(`npm run test:receipts`), TypeScript·lint·웹 export, iOS Simulator Debug 빌드 성공. 전문 에이전트의 수정 코드 재리뷰에서 추가 차단 사항을 발견하지 못했다. 앱 상태를 변경하는 시뮬레이터 입고·소비 확정은 하지 않았고, 기존 iPhone 데모 재고는 유지했다.
-
-- 최신 실기기 QA: `docs/09-device-qa.md`에 iPhone 13 mini의 제한된 사진 접근 → 테스트 이미지 업로드 → fixture 검수 → 수량 공란/편집·제외·취소 → 새 초안 5개 확정 입고 → 냉장/냉동/실온 목록 확인 결과를 기록했다. 사용자가 사진 권한을 제한된 접근으로 변경했으며 테스트 입고 5개 lot는 유지했다. iPhone 본체 한글 키보드·남은 음식 저장·조리 차감·갤럭시 QA·preview build는 미완료다. 기존 웹/Supabase E2E 결과와 이번 미러링 기반 UI 관찰을 구분한다.
-
-- iPhone 최초 확인: 사용자가 개발 앱을 열고 로컬 네트워크 권한을 허용한 뒤 `Reload JS`로 iOS bundle 로딩과 홈 표시를 확인했다. 초기 오프라인 안내는 재시도를 눌러 해제됐다. 미러링에서 사진 권한 요청의 한국어 설명과 `허용 안 함` 뒤 `영수증 사진을 고르려면 사진 접근을 허용해 주세요.` 안내 및 등록 방식 선택 화면 복귀를 확인했다. 이후 제한된 접근·업로드는 위 최신 QA에서 확인했다.
-- 실기기에서 직접 추가/남은 음식 편집 시트에 취소 버튼이 없는 문제를 발견해 공용 편집 시트에 `닫기`를 추가했다. iPhone에서 버튼 표시와 저장 없이 홈 복귀를 확인했고 `npx tsc --noEmit`, `npm run lint`, `git diff --check`를 통과했다. 사진 권한 거부 테스트 뒤 사용자가 설정에서 제한된 접근으로 변경했다.
-
-- 2026-09-06 실기기 설치 준비: iPhone 13 mini(iOS 26.6, 개발자 모드 enabled)와 갤럭시 SM-F766N(Android 16, adb authorized)의 USB 연결을 확인했다. Xcode 26.6·CocoaPods·Android SDK·JDK 17로 두 플랫폼의 로컬 Debug 빌드를 성공했다. 앱 식별자는 `com.parkjsoo.namgimeopsi`로 지정했고, `npm run ios/android`는 Expo 로컬 빌드 명령으로 변경했다. 자동 생성 `ios/`, `android/`는 Git에서 제외한다.
-- 갤럭시는 APK 설치·실행과 Metro의 Android bundle 로딩을 확인했고 앱 프로세스도 실행 중이다. iPhone은 빌드·설치 뒤 실행 단계에서 iOS의 서명/entitlement/프로파일 신뢰 오류로 차단됐다. 사용자에게 본인의 개발 계정 신뢰 확인을 요청했으며, iOS 앱 실행 성공은 아직 확인 전이다. 사진 권한·레이아웃·세 흐름의 실기기 QA와 독립 실행 preview build는 아직 완료하지 않았다.
-- 실기기 준비 검증: `npx tsc --noEmit`, `npm run lint`, 생성된 iOS `NSPhotoLibraryUsageDescription`의 한국어 문구 일치 확인을 통과했다. Android Debug 빌드 성공, iOS Debug 빌드 0 errors(중복 `-lc++` 링크 경고 1건). OCR provider·키·fixture 고지는 변경하지 않았다. 후속 검증에서는 iPhone 신뢰 확인 후 앱 실행, 두 기기의 홈 표시와 사진 권한부터 확인한다.
-
-- 2026-09-06 포트폴리오 준비: 시작 시 `feat/live-recommendations`, HEAD `a980ae6 docs: finalize portfolio handoff`, 작업 트리 clean을 확인했다. README에 데모 준비 문서 링크를 추가했다. 앱·OCR 설정·원격 데이터 변경 없이 대본과 케이스 스터디를 준비했으며 이번에 실기기 QA나 Supabase E2E를 재수행하지 않았다. fixture의 고정 날짜·동명 lot·분석 중 OCR처럼 보이는 문구를 촬영 주의점과 알려진 한계로 기록했다. Figma 및 다른 프로젝트 자료는 접근하지 않았다.
-- 이번 문서 변경 검증: README·데모 문서의 로컬 링크, 대본 9구간의 연속성·합계 120초, `npm run test:domain` 14개 테스트를 통과했다. 커밋 메시지는 `docs: prepare portfolio demo and case study`이며 원격 push는 하지 않는다.
-
-- 원격 `main`은 `83254f7 docs: add project handoff context`까지 반영돼 있다.
-- 이전 세션의 로컬 커밋:
-  - `dfe31d2 feat: initialize Expo inventory prototype`
-  - `c8b1ad2 feat: persist inventory and add leftover flow`
-  - `5a09183 docs: update implementation handoff`
-- `9b8924c feat: add tested inventory domain logic`
-- 현재 작업 브랜치 `feat/live-recommendations`의 로컬 커밋:
-  - `c165a3e feat(recipes): add live recommendation selector`
-  - `d3afd5d feat(inventory): persist consumption events`
-  - `8375bbf feat(home): render live meals and completion flow`
-  - `f0fd1ca docs: record live recommendation demo`
-  - `bf91a64 docs: prepare receipt flow handoff`
-  - `d095fa8 feat(receipts): add local receipt review fixture`
-  - `284f577 feat(inventory): persist receipt intake batches`
-  - `a947e23 feat(receipts): add fixture review flow`
-  - `5541368 fix(receipts): explain duplicate intake`
-  - `13f042f feat(inventory): sync anonymous inventory with supabase`
-  - `2999777 fix(supabase): grant inventory access to authenticated users`
-  - `da08a01 docs: record supabase access verification`
-  - `19bd756 fix(inventory): make remote sync resilient`
-  - `1c3b93d fix(receipts): lock intake batches`
-  - `0c04788 docs: record remaining sync blockers`
-  - `1c951c7 fix(inventory): recover legacy receipt sync`
-- 이번 세션의 로컬 커밋:
-  - `7af9ac5 feat(receipts): add private image scan workflow`
-  - `3856806 fix(receipts): scope scan lookup to caller`
-  - `61a1d7d fix(supabase): allow scan job state updates`
-  - `f495c68 fix(supabase): grant scan state filter access`
-  - `1de928d feat(cooking): record partial consumption sessions`
-  - `3275fc9 docs: update cooking session handoff`
-  - `70e172e docs: refresh portfolio README`
-- 위 로컬 커밋은 아직 원격에 푸시하지 않았다. 다음 세션은 README의 다음 단계대로 실기기 QA 또는 발표 산출물 작업을 택해 시작한다.
+상세 과거 이력은 Git 로그와 `docs/09-device-qa.md`를 따른다. 이 문서의 다음 작업은 위 iPhone 인계 순서를 우선한다.
