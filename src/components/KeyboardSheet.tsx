@@ -8,7 +8,7 @@ export function KeyboardSheet({ children }: PropsWithChildren) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.backdrop, { paddingTop: insets.top + 12 }]}>
       <ScrollView
         style={styles.sheet}
