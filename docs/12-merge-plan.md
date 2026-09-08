@@ -19,7 +19,7 @@ PR 2의 공통 재시도 저장 복구와 PR 4의 빈 잔량 차단은 PR 5에�
 ## 검증 근거와 한계
 
 - 전문 에이전트가 5개 끝 지점의 Git 원문을 각각 인메모리 TypeScript 호스트로 검사해 진단 0건을 확인했다. 현재 설치된 의존성을 사용했으며 각 과거 lockfile로 별도 `npm ci`를 한 결과는 아니다. Expo·React Native·TypeScript 버전은 전 구간 동일하다. PR 1·2의 기존 의존성 중 최종 설치본과 다른 버전은 `js-yaml` 4.3.1 → 4.3.2다.
-- 각 시점 도메인 테스트: PR 1은 10개, PR 2·3은 13개, PR 4·5는 14개 통과했다. PR 1·2에는 ESLint 설치·설정이 없으므로 lint 통과를 주장하지 않는다. ESLint 설정은 PR 3부터 포함된다.
+- 각 시점 도메인 테스트: PR 1은 10개, PR 2·3은 13개, PR 4·5는 14개 통과했다. PR 1에는 ESLint 설정이 없고 PR 2에는 설정 파일이 있지만 ESLint 직접 의존성이 없다. 두 시점의 lint 통과는 주장하지 않는다. PR 3에서 ESLint 의존성과 호환 설정을 복구했다.
 - PR 3 이후 서버 함수 원문은 최종 코드와 동일하며 `npx --yes deno check supabase/functions/analyze-receipt/index.ts`를 별도로 통과했다. 앱의 tsconfig는 Edge Function을 검사하지 않는다.
 - 최종 코드 `4857a6e`에서 domain 14개, inventory 저장 실패·복구 6개, receipts 날짜·세션·진행 중 닫기, recipes 빈 입력·공백·부분 선택 회귀, `tsc --noEmit`, lint를 통과했다. 전문 에이전트 3명 리뷰에서 발견한 P2 두 건을 수정하고 독립 재리뷰에서 추가 차단 이슈를 찾지 못했다.
 - 최신 iOS Release는 코드 수정 `e45f128`·`0e49aa6`를 포함한다. 실제 iPhone·시뮬레이터 설치, Metro 없는 실행, 실제 iPhone XCTest 회귀 및 재고·원장 불변을 확인했다. 증거와 빌드 해시는 `docs/09-device-qa.md`, `docs/11-ios-preview.md`에 있다. 과거 구간 각각의 기기 검증으로 해석하지 않는다.
