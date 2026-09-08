@@ -45,6 +45,7 @@
     "lint": "expo lint",
     "test:domain": "node --experimental-strip-types src/features/domain/domain.test.ts",
     "test:receipts": "node --experimental-strip-types src/features/receipts/recommended-date.test.ts && node --experimental-strip-types src/features/receipts/review-session.test.ts && node src/features/receipts/progress-close.test.mjs",
+    "test:recipes": "node src/features/recipes/completion-validation.test.mjs",
     "test:inventory": "node --experimental-strip-types src/features/inventory/receipt-persistence.test.mjs"
   },
   "private": true

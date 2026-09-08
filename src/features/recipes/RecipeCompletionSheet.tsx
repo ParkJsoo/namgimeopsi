@@ -37,9 +37,13 @@ export function RecipeCompletionSheet({
     mode: draft.modes[item.id] ?? 'all',
     remainingQuantity: draft.remainingQuantities[item.id],
   }));
-  const canConfirm = Boolean(recommendation && consumptions.some((consumption) =>
-    consumption.mode === 'all' || Boolean(consumption.remainingQuantity?.trim() && consumption.remainingQuantity !== consumedItems.find((item) => item.id === consumption.itemId)?.quantity),
-  ));
+  const hasValidQuantities = consumptions.every((consumption) =>
+    consumption.mode === 'all' || Boolean(consumption.remainingQuantity?.trim()),
+  );
+  const hasChanges = consumptions.some((consumption) =>
+    consumption.mode === 'all' || Boolean(consumption.remainingQuantity?.trim() && consumption.remainingQuantity.trim() !== consumedItems.find((item) => item.id === consumption.itemId)?.quantity),
+  );
+  const canConfirm = Boolean(recommendation && hasValidQuantities && hasChanges);
 
   return (
     <Modal animationType="slide" transparent visible={recommendation !== null} onRequestClose={onClose}>
@@ -81,17 +85,20 @@ export function RecipeCompletionSheet({
                   style={styles.quantityInput}
                 />
               ) : null}
+              {mode === 'remaining' && !draft.remainingQuantities[item.id]?.trim() ? (
+                <Text accessibilityRole="alert" style={styles.warning}>남은 양을 입력해 주세요.</Text>
+              ) : null}
             </View>
             );
           })}
         </View>
-        {!canConfirm ? <Text style={styles.warning}>차감할 보유 재료가 없어요. 냉장고를 먼저 확인해 주세요.</Text> : null}
+        {!consumedItems.length ? <Text style={styles.warning}>차감할 보유 재료가 없어요. 냉장고를 먼저 확인해 주세요.</Text> : null}
         <Text style={styles.note}>남은 양은 숫자로 환산하지 않아요. 바꾼 값만 소비 원장과 재고에 함께 저장돼요.</Text>
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ disabled: !canConfirm }}
           disabled={!canConfirm}
-          onPress={() => onConfirm(consumptions)}
+          onPress={() => { if (canConfirm) onConfirm(consumptions); }}
           style={[styles.primaryButton, !canConfirm && styles.primaryButtonDisabled]}>
           <Text style={styles.primaryButtonText}>재료 사용 완료</Text>
         </Pressable>
