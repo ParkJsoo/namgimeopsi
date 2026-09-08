@@ -18,12 +18,27 @@ const hookCode = ts.transpileModule(
 
 function createHarness() {
   const durable = new Map();
-  const controls = { failStorage: false, failRemote: false, remoteCalls: 0 };
+  const controls = {
+    failStorage: false,
+    failStorageAt: null,
+    storageAttempts: 0,
+    attemptedWrites: [],
+    failRemote: false,
+    remoteCalls: 0,
+    cookingCalls: [],
+  };
+  const remoteWrite = async () => {
+    controls.remoteCalls += 1;
+    if (controls.failRemote) throw new Error('offline');
+    return 'confirmed';
+  };
   const modules = {
     '@react-native-async-storage/async-storage': {
       default: {
         multiSet: async (entries) => {
-          if (controls.failStorage) throw new Error('storage unavailable');
+          controls.storageAttempts += 1;
+          controls.attemptedWrites.push(new Map(entries));
+          if (controls.failStorage || controls.storageAttempts === controls.failStorageAt) throw new Error('storage unavailable');
           for (const [key, value] of entries) durable.set(key, value);
         },
       },
@@ -39,10 +54,11 @@ function createHarness() {
     '../receipts/confirm-receipt': receiptConfirmation,
     './supabase-store': {
       ensureInventoryUser: async () => ({ id: 'test-user' }),
-      commitReceiptIntake: async () => {
-        controls.remoteCalls += 1;
-        if (controls.failRemote) throw new Error('offline');
-        return 'confirmed';
+      commitReceiptIntake: remoteWrite,
+      upsertInventoryItems: remoteWrite,
+      commitCookingSession: async (events) => {
+        controls.cookingCalls.push(events);
+        return remoteWrite();
       },
     },
   };
@@ -115,4 +131,83 @@ test('remote failure retains a durable receipt and retry drains its outbox witho
   assertSingleReceipt(readState());
   assert.deepEqual(readQueue(), []);
   assert.equal(controls.remoteCalls, 2);
+});
+
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+const leftoverDraft = { name: 'QA curry', quantity: '1인분', kind: 'leftover', storage: '냉장', recommendedUseBy: '내일까지' };
+
+test('sync retry persists a failed leftover addition before sending its original outbox operation', async () => {
+  const { hook, controls, durable, readState, readQueue } = createHarness();
+  controls.failStorage = true;
+  hook.add(leftoverDraft);
+  await settle();
+  assert.equal(durable.size, 0);
+  assert.equal(controls.remoteCalls, 0);
+  const failedSnapshot = controls.attemptedWrites[0];
+
+  // An unavailable disk must keep blocking remote writes, including on retry.
+  hook.retrySync();
+  await settle();
+  assert.equal(durable.size, 0);
+  assert.equal(controls.remoteCalls, 0);
+
+  controls.failStorage = false;
+  hook.retrySync();
+  await settle();
+  assert.equal(readState().items.length, 1);
+  assert.equal(readState().items[0].name, leftoverDraft.name);
+  assert.deepEqual(controls.attemptedWrites[2], failedSnapshot);
+  assert.deepEqual(readQueue(), []);
+  assert.equal(controls.remoteCalls, 1);
+});
+
+test('sync retry preserves cooking session IDs and queued operation order after a local write failure', async () => {
+  const { hook, controls, readState, readQueue } = createHarness();
+  controls.failRemote = true;
+  hook.add(leftoverDraft);
+  await settle();
+  const item = readState().items[0];
+  const pendingAddition = readQueue()[0];
+
+  controls.failStorage = true;
+  assert.equal(hook.completeCookingSession([
+    { itemId: item.id, mode: 'remaining', remainingQuantity: '반 인분' },
+  ], { recipeId: 'qa-recipe', recipeTitle: 'QA curry' }), true);
+  await settle();
+  const failedQueue = JSON.parse(controls.attemptedWrites.at(-1).get('namgimeopsi.inventory.sync-queue.v1'));
+  assert.equal(failedQueue.length, 2);
+  assert.deepEqual(failedQueue[0], pendingAddition);
+  const cookingOperation = failedQueue[1];
+  assert.equal(cookingOperation.type, 'commit-cooking-session');
+
+  controls.failStorage = false;
+  hook.retrySync();
+  await settle();
+  assert.deepEqual(readQueue(), failedQueue);
+  assert.equal(readState().items[0].quantity, '반 인분');
+  assert.equal(controls.cookingCalls.length, 0, 'The failed addition must block the later cooking operation');
+
+  controls.failRemote = false;
+  hook.retrySync();
+  await settle();
+  assert.deepEqual(readQueue(), []);
+  assert.equal(readState().events.length, 1);
+  assert.deepEqual(controls.cookingCalls, [cookingOperation.events]);
+  assert.equal(readState().events[0].cookingSessionId, cookingOperation.events[0].cookingSessionId);
+});
+
+test('sync retry persists a completed dequeue even when the in-memory outbox is empty', async () => {
+  const { hook, controls, readState, readQueue } = createHarness();
+  controls.failStorageAt = 2;
+  hook.add(leftoverDraft);
+  await settle();
+  assert.equal(controls.remoteCalls, 1);
+  assert.equal(readQueue().length, 1, 'The failed dequeue write leaves the sent operation on disk');
+
+  controls.failStorageAt = null;
+  hook.retrySync();
+  await settle();
+  assert.deepEqual(readQueue(), []);
+  assert.equal(readState().items.length, 1);
+  assert.equal(controls.remoteCalls, 1, 'Retry only needs to persist the completed dequeue');
 });

@@ -272,7 +272,13 @@ export function useInventory() {
     }
   };
 
-  const retrySync = () => { void flushSyncQueue(); };
+  const retrySync = () => {
+    // A failed local write leaves optimistic state and its outbox in memory.
+    // Retry that snapshot before sending anything or reporting an empty queue.
+    void persist(stateRef.current, queueRef.current)
+      .then(() => flushSyncQueue())
+      .catch(() => setSyncStatus('error'));
+  };
 
   return {
     items: getActiveInventoryItems(state),
