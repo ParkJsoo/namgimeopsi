@@ -75,7 +75,7 @@
 ## Recommended next session order
 
 - **통합 완료:** 기능별 PR #1~#5를 merge commit으로 main에 순차 병합했다. 기준 `14a7977`은 최종 feature tree와 같고 기존 커밋을 모두 포함한다. 계획·PR 링크는 `docs/12-merge-plan.md`를 따른다.
-- **최신 Android 회귀 완료:** `qa/android-final-release`에서 main `14a7977` 코드 그대로 Galaxy Release를 갱신 설치했다. 조리 빈 잔량·한글/스와이프·취소, 오프라인 남은 음식 저장·재실행·연결 복구, 영수증 키보드·취소를 통과했다. 현재 iOS·Android 모두 `e45f128`·`0e49aa6` 수정이 포함돼 있다. APK 해시·기기 데이터 보존 근거는 `docs/10-android-preview.md` 최신 항목을 따른다. 이번 QA 문서 커밋은 로컬에 남기며 새 push·PR 생성·병합은 하지 않는다.
+- **최신 Android 회귀 완료:** `qa/android-final-release`에서 main `14a7977` 코드 그대로 Galaxy Release를 갱신 설치했다. 조리 빈 잔량·한글/스와이프·취소, 오프라인 남은 음식 저장·재실행·연결 복구, 영수증 키보드·취소를 통과했다. 현재 iOS·Android 모두 `e45f128`·`0e49aa6` 수정이 포함돼 있다. APK 해시·기기 데이터 보존 근거는 `docs/10-android-preview.md` 최신 항목을 따른다. QA 완료 당시 문서 커밋은 로컬에 보관했다. 이후 사용자가 push와 병합 검토를 요청했으며, 차단 이슈가 없으면 별도 Android QA PR로 main에 통합하도록 허가했다.
 
 1. `AGENTS.md`와 이 문서, `docs/09-device-qa.md`, 양쪽 preview 기록을 읽고 Git 상태를 확인한다. 핵심 기기 QA를 처음부터 반복할 필요는 없다.
 2. **다음 작업은 포트폴리오 데모다.** `docs/08-portfolio-demo.md`의 120초 대본을 리허설하고 녹화·편집·케이스 스터디를 마무리한다. 영상 파일/공개 링크는 아직 없다. 기존 재고를 지우지 않고 별도 데모 환경을 사용한다.
