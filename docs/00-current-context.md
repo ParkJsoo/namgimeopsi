@@ -74,6 +74,8 @@
 
 ## Recommended next session order
 
+- **현재 통합 작업:** 사용자의 2026-09-08 `계획 세우고 PR 구분도 잘해서 진행하자` 요청에 따라 새 커밋 push 및 PR 생성·순차 main 병합을 진행한다. 이전의 push 보류는 이 통합 범위에 한해 해제됐다. 5개 PR 경계·순서·검증 한계는 `docs/12-merge-plan.md`를 따른다. 병합 완료 여부는 해당 PR의 GitHub 상태와 원격 main을 확인한다. 앱 배포·원격 migration 재적용은 이 작업에 포함하지 않는다.
+
 1. `AGENTS.md`와 이 문서, `docs/09-device-qa.md`, `docs/10-android-preview.md`를 읽고 Git 상태를 확인한다. 작업 브랜치는 `feat/live-recommendations`이며 `origin/feat/live-recommendations`를 추적한다.
 2. **iPhone 핵심 QA와 iOS 독립 실행 preview 검증을 완료했다.** `cd8b625` 기준 QA 뒤 전문 에이전트 3명의 리뷰에서 발견한 P2 두 건을 `e45f128`·`0e49aa6`로 수정하고 독립 재리뷰했다. 수정 Release를 실제 iPhone·시뮬레이터에 갱신 설치해 Metro 없는 실행을 확인했다. 상세는 `docs/11-ios-preview.md`를 따른다. Galaxy 핵심 QA를 처음부터 반복하지 않는다.
 3. iPhone 13 mini / iOS 26.6.1의 연결·잠금·미러링을 확인한다. 최종 설치는 내장 JS를 쓰는 Release로 Metro가 필요 없다. 개발 서명 만료는 2026-09-13 14:32:39 KST이며 필요하면 동일 앱 ID·서명으로 갱신한다. 기존 테스트 재고를 지우거나 앱을 삭제하지 않는다.
@@ -96,12 +98,12 @@
 
 ## Last verified repository state — 2026-09-08 handoff
 
-- **최신 전문 협업 리뷰:** iOS 입력·비동기 저장·QA 근거 에이전트 3명과 리뷰했다. 로컬 저장 실패 후 공통 재시도 복구(`e45f128`), 조리 빈 잔량으로 일부 재료만 소비되던 경로 차단(`0e49aa6`)을 수정했다. 다른 에이전트의 독립 재리뷰에서 추가 차단 이슈 없음. inventory 6개·새 recipes 회귀·타입·lint 통과. 실제 iPhone XCTest로 빈 입력 차단→한글 수정 후 활성→스와이프·취소를 통과했고 재고/원장 불변을 대조했다. 현재 iOS 설치·해시는 `docs/11-ios-preview.md` 최신 항목을 따른다. 새 변경은 push하지 않는다.
+- **최신 전문 협업 리뷰:** iOS 입력·비동기 저장·QA 근거 에이전트 3명과 리뷰했다. 로컬 저장 실패 후 공통 재시도 복구(`e45f128`), 조리 빈 잔량으로 일부 재료만 소비되던 경로 차단(`0e49aa6`)을 수정했다. 다른 에이전트의 독립 재리뷰에서 추가 차단 이슈 없음. inventory 6개·새 recipes 회귀·타입·lint 통과. 실제 iPhone XCTest로 빈 입력 차단→한글 수정 후 활성→스와이프·취소를 통과했고 재고/원장 불변을 대조했다. 현재 iOS 설치·해시는 `docs/11-ios-preview.md` 최신 항목을 따른다. 당시 새 변경은 push를 보류했으며 이후 통합 요청은 위 통합 작업 항목을 따른다.
 
-- **이번 iPhone QA 세션:** 시작 HEAD는 `cd8b625`, clean 상태에서 `origin/feat/live-recommendations`와 일치했다. 새 변경은 별도 요청 전까지 push하지 않는다. iOS Release 설치·Metro 없는 cold launch·기존 냉장 재고 유지·테스트 영수증 fixture 검수 진입을 직접 확인했다. 상세·남은 항목은 `docs/09-device-qa.md`의 최신 iPhone 항목과 `docs/11-ios-preview.md`를 따른다.
+- **이번 iPhone QA 세션:** 시작 HEAD는 `cd8b625`, clean 상태에서 `origin/feat/live-recommendations`와 일치했다. 당시 새 변경은 별도 요청 전까지 push를 보류했다. iOS Release 설치·Metro 없는 cold launch·기존 냉장 재고 유지·테스트 영수증 fixture 검수 진입을 직접 확인했다. 상세·남은 항목은 `docs/09-device-qa.md`의 최신 iPhone 항목과 `docs/11-ios-preview.md`를 따른다.
 - **시뮬레이터 후속:** `bb3258e` 이후 문서 외 영구 소스 변경 없이 전용 iOS 26.5 Release QA를 수행했다. 세 시트 한글 조합, 남은 음식 저장·소비 원장 2건·재실행 유지, 응답 지연 조건의 두 진행 단계 닫기·재진입을 확인했다. 원래 소스·Release를 복원하고 번들 해시 일치·Metro 없는 실행·최종 목록을 재확인했다. 이후 `ce93e4f` 뒤 XCTest 네이티브 터치로 세 시트 스와이프도 검증했다. 실제 본체 결과와는 구분한다.
 - **실제 iPhone 네이티브 터치 후속:** `fa47b6d` 이후 사용자 잠금 해제만 받고 에이전트가 세 입력 시트의 화면 한글 조합·키보드 시작 터치 스와이프·하단 버튼 전체 접근·취소를 검증했다. 재고 17개·원장 13개 불변과 Metro 없는 cold launch 후 목록을 재확인했다. 기존 요청의 iPhone 핵심 QA를 완료했고 영구 앱 소스 변경은 없다. 상세는 `docs/09-device-qa.md`의 최신 실제 iPhone 결과다.
-- **실제 iPhone 미러링 후속:** `7d94a61` 이후 직접 저장·차감·취소·재실행 및 작은 단위 스크롤을 확인했다. 새 조리 세션 `cooking-1788860288115-3`의 부분/전량 원장 2건과 기존 lot 보존을 USB 기기 캐시로 대조했다. 최종 lot 17개·원장 13개다. 두 진행 단계 닫기는 20초 성공 응답 전달 지연 조건이며 원래 Release로 복원하고 최초 번들 해시 일치·서명·Metro 없는 재실행을 확인했다. 영구 앱 소스 변경은 없다. 새 문서 커밋은 push하지 않는다.
+- **실제 iPhone 미러링 후속:** `7d94a61` 이후 직접 저장·차감·취소·재실행 및 작은 단위 스크롤을 확인했다. 새 조리 세션 `cooking-1788860288115-3`의 부분/전량 원장 2건과 기존 lot 보존을 USB 기기 캐시로 대조했다. 최종 lot 17개·원장 13개다. 두 진행 단계 닫기는 20초 성공 응답 전달 지연 조건이며 원래 Release로 복원하고 최초 번들 해시 일치·서명·Metro 없는 재실행을 확인했다. 영구 앱 소스 변경은 없다. 당시 새 문서 커밋은 push를 보류했다.
 - 이전 인계: 구현 기준 `eca2a79 fix: retry receipt persistence and allow closing progress`와 문서 인계 `cd8b625`는 사용자 요청으로 `origin/feat/live-recommendations`에 push 완료했다. main 병합·PR 생성·스토어 배포는 하지 않았다. 이 이력은 이번 세션의 새 변경에 대한 push 허가가 아니다.
 - **Galaxy 핵심 QA 완료:** SM-F766N / Android 16에서 영수증 검수·5개 입고, 남은 음식 저장, 조리 부분/전량 차감과 재실행 유지, 세 입력 시트의 한글 키보드 유지 스크롤·하단 버튼 접근을 확인했다. 사용자 본체 보고와 에이전트 직접 관찰은 `docs/09-device-qa.md`에 구분했다.
 - **Android 로컬 preview 확인:** JS 내장 arm64 Release를 설치하고 네트워크 없이 cold launch, 오프라인 영수증 실패·온라인 재시도·fixture 고지·키보드 스크롤·취소를 확인했다. 최신 리뷰 수정을 포함해 Release를 재빌드·설치했다. Galaxy 최종 설치는 Release이며 Metro가 필요 없다. 로컬 debug keystore 서명으로 EAS/스토어 배포와 다르다. APK 경로·해시·증거 버전은 `docs/10-android-preview.md`를 따른다.
@@ -112,4 +114,4 @@
 - 추가 경계 QA: 실제 HEIC·10MB 경계 이미지, 긴 이름, Galaxy 접힘/펼침 전환. Android 16의 현재 시스템 Photo Picker는 앱 전체 사진 권한을 요청하지 않으므로 iOS식 거부/제한/전체 QA와 구분한다.
 - 후속 동기화 테스트 후보: offline hydrate의 bootstrap 생성 및 pending receipt 재적용 경계. 일반적인 단일 클라이언트 경로에서 수량 손실을 재현하지 못했으므로 확정 결함으로 기록하지 않는다.
 
-상세 과거 이력은 Git 로그와 `docs/09-device-qa.md`를 따른다. 이 문서의 다음 작업은 위 iPhone 인계 순서를 우선한다.
+상세 과거 이력은 Git 로그와 `docs/09-device-qa.md`를 따른다. 이 문서의 다음 작업은 위 통합 작업과 Recommended next session order를 따른다.
