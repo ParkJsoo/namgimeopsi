@@ -24,5 +24,7 @@ export type ReceiptDraftItem = {
 export type ReceiptReviewDraft = {
   batchId: string;
   sourceLabel: string;
+  /** 실제로 private Storage에 저장되고 분석이 끝난 scan job에만 연결한다. */
+  scanJobId?: string;
   items: ReceiptDraftItem[];
 };

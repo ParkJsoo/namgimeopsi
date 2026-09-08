@@ -26,6 +26,12 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "영수증 사진을 비공개로 저장하고, 검수할 품목 초안을 만들 때만 사용해요."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#FAF8F4",

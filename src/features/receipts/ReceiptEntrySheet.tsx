@@ -1,16 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import type { StoragePlace } from '../inventory/types';
 import { receiptReviewFixture } from './fixture';
+import { analyzeReceiptImage, pickReceiptImage, uploadReceiptImage } from './scan-storage';
 import { canConfirmReceiptDraft, type ReceiptConfirmationResult } from './confirm-receipt';
 import { getReceiptReviewCounts, updateReceiptDraftItem } from './review-draft';
 import type { ReceiptReviewDraft } from './types';
 
-type ReceiptStage = 'choice' | 'analyzing' | 'review' | 'complete';
+type ReceiptStage = 'choice' | 'uploading' | 'analyzing' | 'review' | 'complete';
 
-function createReviewDraft(): ReceiptReviewDraft {
-  return { ...receiptReviewFixture, items: receiptReviewFixture.items.map((item) => ({ ...item })) };
+function createReviewDraft(scan?: Pick<ReceiptReviewDraft, 'scanJobId' | 'sourceLabel'>): ReceiptReviewDraft {
+  return {
+    ...receiptReviewFixture,
+    ...(scan
+      ? {
+          batchId: `receipt-${scan.scanJobId}`,
+          sourceLabel: scan.sourceLabel,
+          scanJobId: scan.scanJobId,
+        }
+      : {}),
+    items: receiptReviewFixture.items.map((item) => ({ ...item })),
+  };
 }
 
 function StoragePicker({ value, onChange }: { value: StoragePlace; onChange: (storage: StoragePlace) => void }) {
@@ -50,25 +61,52 @@ export function ReceiptEntrySheet({
   const [draft, setDraft] = useState<ReceiptReviewDraft>(createReviewDraft);
   const [isSaving, setIsSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const counts = getReceiptReviewCounts(draft);
   const canConfirm = canConfirmReceiptDraft(draft) && !isSaving;
 
-  useEffect(() => {
-    if (stage !== 'analyzing') return;
-    const timer = setTimeout(() => setStage('review'), 900);
-    return () => clearTimeout(timer);
-  }, [stage]);
-
-  const startReceiptReview = () => {
+  const startReceiptReview = async () => {
     setDraft(createReviewDraft());
     setSaveNotice(null);
-    setStage('analyzing');
+    setScanNotice(null);
+    setStage('uploading');
+    try {
+      const image = await pickReceiptImage();
+      if (!image) {
+        setStage('choice');
+        return;
+      }
+
+      const uploaded = await uploadReceiptImage(image);
+      setScanNotice('영수증 원본을 내 계정의 비공개 저장소에 보관했어요. 공개 링크는 만들지 않아요.');
+      setStage('analyzing');
+
+      const analyzed = await analyzeReceiptImage(uploaded.id);
+      if (analyzed.status !== 'ready') throw new Error('영수증 분석을 완료하지 못했어요.');
+
+      setDraft(
+        createReviewDraft({
+          scanJobId: analyzed.id,
+          sourceLabel: image.fileName ? `선택한 영수증 · ${image.fileName}` : '선택한 영수증',
+        }),
+      );
+      setScanNotice(
+        analyzed.analysisSource === 'fixture'
+          ? '원본은 비공개로 저장됐어요. 분석 제공자는 아직 연결 전이라, 아래 품목은 검수 UX용 fixture 초안입니다.'
+          : '원본은 비공개로 저장됐어요. 아래 AI 초안은 저장 전에 직접 확인해 주세요.',
+      );
+      setStage('review');
+    } catch (error) {
+      setScanNotice(error instanceof Error ? error.message : '영수증 사진을 준비하지 못했어요. 다시 시도해 주세요.');
+      setStage('choice');
+    }
   };
 
   const resetSheet = () => {
     setStage('choice');
     setIsSaving(false);
     setSaveNotice(null);
+    setScanNotice(null);
   };
 
   const closeSheet = () => {
@@ -122,6 +160,7 @@ export function ReceiptEntrySheet({
             <>
               <Text style={styles.title}>빠르게 추가할까요?</Text>
               <Text style={styles.copy}>등록 방법을 고르면 다음 단계에서 직접 확인할 수 있어요.</Text>
+              {scanNotice ? <Text accessibilityRole="alert" style={styles.scanNotice}>{scanNotice}</Text> : null}
               <Pressable accessibilityRole="button" onPress={startReceiptReview} style={styles.primaryButton}>
                 <Text style={styles.primaryButtonText}>영수증으로 등록</Text>
               </Pressable>
@@ -139,10 +178,19 @@ export function ReceiptEntrySheet({
             </>
           ) : null}
 
+          {stage === 'uploading' ? (
+            <View style={styles.analysisBody}>
+              <Text style={styles.title}>영수증 원본을 안전하게 저장하고 있어요</Text>
+              <Text style={styles.analysisLead}>사진은 내 계정의 비공개 저장소에만 보관해요.</Text>
+              <Text style={styles.analysisStep}>1. 파일 형식과 크기를 확인하고 있어요</Text>
+              <Text style={styles.analysisStep}>2. 분석 작업을 준비하고 있어요</Text>
+            </View>
+          ) : null}
+
           {stage === 'analyzing' ? (
             <View style={styles.analysisBody}>
-              <Text style={styles.title}>데모 영수증을 분석하고 있어요</Text>
-              <Text style={styles.analysisLead}>실제 OCR이 아닌, 검수 흐름을 위한 로컬 fixture예요.</Text>
+              <Text style={styles.title}>장 본 것을 정리하고 있어요</Text>
+              <Text style={styles.analysisLead}>원본의 소유권·형식·용량을 서버에서 한 번 더 확인해요.</Text>
               <Text style={styles.analysisStep}>1. 영수증 글자를 읽었어요</Text>
               <Text style={styles.analysisStep}>2. 상품명을 식재료로 정리하고 있어요</Text>
               <Text style={styles.analysisStep}>3. 보관 위치와 권장 섭취 시점을 제안할게요</Text>
@@ -154,6 +202,7 @@ export function ReceiptEntrySheet({
             <>
               <Text style={styles.title}>장 본 것 확인</Text>
               <Text style={styles.copy}>{counts.included}개를 찾았어요. AI가 읽은 결과를 맞는지만 확인해 주세요.</Text>
+              {scanNotice ? <Text style={styles.scanNotice}>{scanNotice}</Text> : null}
               {saveNotice ? <Text accessibilityRole="alert" style={styles.saveNotice}>{saveNotice}</Text> : null}
               <ScrollView style={styles.reviewScroll} contentContainerStyle={styles.reviewContent} showsVerticalScrollIndicator={false}>
                 {(['high', 'needs-review'] as const).map((confidence) => {
@@ -257,6 +306,7 @@ const styles = StyleSheet.create({
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#C9C7C1', marginBottom: 18 },
   title: { fontSize: 22, lineHeight: 30, fontWeight: '700', color: '#1D211C' },
   copy: { marginTop: 8, color: '#4D554B', fontSize: 14, lineHeight: 21 },
+  scanNotice: { marginTop: 10, borderRadius: 12, padding: 12, backgroundColor: '#EEEBFF', color: '#51459C', fontSize: 13, lineHeight: 19, fontWeight: '600' },
   saveNotice: { marginTop: 10, borderRadius: 12, padding: 12, backgroundColor: '#FFF1DC', color: '#8A5311', fontSize: 13, lineHeight: 19, fontWeight: '600' },
   primaryButton: { minHeight: 52, marginTop: 20, borderRadius: 14, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center' },
   primaryButtonDisabled: { backgroundColor: '#A5BCA9' },

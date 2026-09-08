@@ -164,12 +164,15 @@ export async function upsertInventoryEvents(user: User, events: InventoryLedgerE
 }
 
 /** 영수증에서 만든 lot와 입고 원장을 Postgres 함수 하나로 확정한다. */
-export async function commitReceiptIntake(receiptId: string, items: InventoryItem[], events: InventoryLedgerEvent[]) {
-  const { data, error } = await supabase.rpc('commit_receipt_intake', {
+export async function commitReceiptIntake(receiptId: string, items: InventoryItem[], events: InventoryLedgerEvent[], scanJobId?: string) {
+  const rpcName = scanJobId ? 'commit_receipt_scan_intake' : 'commit_receipt_intake';
+  const args = {
     p_receipt_id: receiptId,
     p_items: items.map(receiptItemPayload),
     p_events: events.map(receiptEventPayload),
-  });
+    ...(scanJobId ? { p_scan_id: scanJobId } : {}),
+  };
+  const { data, error } = await supabase.rpc(rpcName, args);
   if (error) throw error;
   if (data !== 'confirmed' && data !== 'already-confirmed') {
     throw new Error('영수증 입고 결과를 확인하지 못했어요.');
