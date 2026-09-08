@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { KeyboardSheet } from '@/components/KeyboardSheet';
 import type { RecipeRecommendation } from '@/features/domain/recipe-ranking';
 import { useInventory } from '@/features/inventory/use-inventory';
 import {
@@ -318,65 +319,63 @@ export default function HomeScreen() {
       </View>
 
       <Modal animationType="slide" transparent visible={editorOpen} onRequestClose={() => setEditorOpen(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.sheet}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>{editingId ? '재고 수정' : '직접 추가'}</Text>
-            <Text style={styles.fieldLabel}>등록할 항목</Text>
-            <KindPicker
-              value={draft.kind}
-              onChange={(kind) =>
-                setDraft((current) => ({
-                  ...current,
-                  kind,
-                  storage: kind === 'leftover' ? '냉장' : current.storage,
-                  recommendedUseBy: kind === 'leftover' ? '내일까지' : current.recommendedUseBy,
-                }))
-              }
-            />
-            <Text style={styles.fieldLabel}>식재료 이름</Text>
-            <TextInput
-              accessibilityLabel="식재료 이름"
-              value={draft.name}
-              onChangeText={(name) => setDraft((current) => ({ ...current, name }))}
-              placeholder="예: 양파"
-              placeholderTextColor="#8B9087"
-              style={styles.input}
-            />
-            <Text style={styles.fieldLabel}>남은 양</Text>
-            <TextInput
-              accessibilityLabel="남은 양"
-              value={draft.quantity}
-              onChangeText={(quantity) => setDraft((current) => ({ ...current, quantity }))}
-              style={styles.input}
-            />
-            <Text style={styles.fieldLabel}>보관 위치</Text>
-            <StoragePicker value={draft.storage} onChange={(storage) => setDraft((current) => ({ ...current, storage }))} />
-            <Text style={styles.fieldLabel}>권장 섭취 시점</Text>
-            <TextInput
-              accessibilityLabel="권장 섭취 시점"
-              value={draft.recommendedUseBy}
-              onChangeText={(recommendedUseBy) => setDraft((current) => ({ ...current, recommendedUseBy }))}
-              style={styles.input}
-            />
-            <Text style={styles.safetyNote}>
-              {draft.kind === 'leftover'
-                ? '조리·보관 시작은 지금으로 기록돼요. 이는 식품 안전을 보장하는 날짜가 아니에요.'
-                : '포장 표기일과 별도로, 사용자가 정할 수 있는 권장 섭취 시점이에요.'}
-            </Text>
-            <Pressable accessibilityRole="button" onPress={saveItem} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>{editingId ? '수정 완료' : '냉장고에 담기'}</Text>
+        <KeyboardSheet>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>{editingId ? '재고 수정' : '직접 추가'}</Text>
+          <Text style={styles.fieldLabel}>등록할 항목</Text>
+          <KindPicker
+            value={draft.kind}
+            onChange={(kind) =>
+              setDraft((current) => ({
+                ...current,
+                kind,
+                storage: kind === 'leftover' ? '냉장' : current.storage,
+                recommendedUseBy: kind === 'leftover' ? '내일까지' : current.recommendedUseBy,
+              }))
+            }
+          />
+          <Text style={styles.fieldLabel}>식재료 이름</Text>
+          <TextInput
+            accessibilityLabel="식재료 이름"
+            value={draft.name}
+            onChangeText={(name) => setDraft((current) => ({ ...current, name }))}
+            placeholder="예: 양파"
+            placeholderTextColor="#8B9087"
+            style={styles.input}
+          />
+          <Text style={styles.fieldLabel}>남은 양</Text>
+          <TextInput
+            accessibilityLabel="남은 양"
+            value={draft.quantity}
+            onChangeText={(quantity) => setDraft((current) => ({ ...current, quantity }))}
+            style={styles.input}
+          />
+          <Text style={styles.fieldLabel}>보관 위치</Text>
+          <StoragePicker value={draft.storage} onChange={(storage) => setDraft((current) => ({ ...current, storage }))} />
+          <Text style={styles.fieldLabel}>권장 섭취 시점</Text>
+          <TextInput
+            accessibilityLabel="권장 섭취 시점"
+            value={draft.recommendedUseBy}
+            onChangeText={(recommendedUseBy) => setDraft((current) => ({ ...current, recommendedUseBy }))}
+            style={styles.input}
+          />
+          <Text style={styles.safetyNote}>
+            {draft.kind === 'leftover'
+              ? '조리·보관 시작은 지금으로 기록돼요. 이는 식품 안전을 보장하는 날짜가 아니에요.'
+              : '포장 표기일과 별도로, 사용자가 정할 수 있는 권장 섭취 시점이에요.'}
+          </Text>
+          <Pressable accessibilityRole="button" onPress={saveItem} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>{editingId ? '수정 완료' : '냉장고에 담기'}</Text>
+          </Pressable>
+          {editingId ? (
+            <Pressable accessibilityRole="button" onPress={deleteItem} style={styles.deleteButton}>
+              <Text style={styles.deleteButtonText}>재고에서 제외</Text>
             </Pressable>
-            {editingId ? (
-              <Pressable accessibilityRole="button" onPress={deleteItem} style={styles.deleteButton}>
-                <Text style={styles.deleteButtonText}>재고에서 제외</Text>
-              </Pressable>
-            ) : null}
-            <Pressable accessibilityRole="button" onPress={() => setEditorOpen(false)} style={styles.deleteButton}>
-              <Text style={styles.closeButtonText}>닫기</Text>
-            </Pressable>
-          </View>
-        </View>
+          ) : null}
+          <Pressable accessibilityRole="button" onPress={() => setEditorOpen(false)} style={styles.deleteButton}>
+            <Text style={styles.closeButtonText}>닫기</Text>
+          </Pressable>
+        </KeyboardSheet>
       </Modal>
 
       <RecipeCompletionSheet
@@ -465,8 +464,6 @@ const styles = StyleSheet.create({
   tabActive: { color: '#2F6B4F' },
   fab: { width: 56, height: 56, borderRadius: 28, marginTop: -30, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center', shadowColor: '#2F6B4F', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
   fabText: { color: '#FFFFFF', fontSize: 29, lineHeight: 31, fontWeight: '300' },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(29,33,28,0.35)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FAF8F4', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34 },
   sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#C9C7C1', marginBottom: 18 },
   sheetTitle: { fontSize: 22, lineHeight: 30, fontWeight: '700', color: '#1D211C', marginBottom: 20 },
   fieldLabel: { marginTop: 14, marginBottom: 6, color: '#4D554B', fontSize: 13, lineHeight: 18, fontWeight: '600' },
