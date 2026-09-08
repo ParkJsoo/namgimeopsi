@@ -2,6 +2,20 @@
 
 2026-09-08, Galaxy SM-F766N / Android 16에서 확인했다. 앱은 `com.parkjsoo.namgimeopsi`, versionName `1.0.0`, versionCode `1`, arm64-v8a Release APK다. EAS 배포나 스토어 배포는 아니다. Expo 생성 프로젝트의 debug keystore로 서명한 로컬 검증용 Release이며, JS와 자산을 내장해 Metro 없이 실행한다.
 
+## 최신 설치 — main 병합 후 최종 회귀 (2026-09-08, `14a7977`)
+
+- `e45f128` 공통 저장 재시도 복구와 `0e49aa6` 조리 빈 잔량 차단을 포함한 최신 main으로 Release를 빌드했다. 앱 소스 변경 없이 같은 앱 ID·debug keystore 서명으로 `adb install -r` 갱신했다.
+- **현재 APK SHA-256:** `0cdd41dac0de4731517930b3a63b1c1d4876d88a9a5ae2e98ceca321fa115851`. 기기에 설치된 `base.apk` 해시도 정확히 일치하며 `DEBUGGABLE` 플래그가 없다.
+- Wi-Fi·모바일 데이터를 끈 상태의 force-stop → cold launch를 통과했다. Metro 8081 리스너와 ADB reverse 매핑이 없는 상태다. QA 뒤 두 네트워크 설정은 모두 원래 켜짐으로 복원했다.
+- 두부 빈 잔량 + 애호박 `다 먹음`에서 완료 비활성·안내를 확인했다. 빈 입력에서 완료 영역을 눌러도 소비되지 않았다. 실제 화면 한글 키로 `반 모`를 조합하자 활성화됐고, 키보드 유지 스와이프로 완료·취소 버튼 전체에 접근해 취소했다.
+- 오프라인에서 `QA Android 카레 · 1인분 · 냉장 · 내일까지`를 저장하고 종료·재실행 후 유지했다. 네트워크 복원 직후 첫 재시도는 실패 안내가 유지됐으나 연결이 확보된 뒤 다시 탭하자 해제됐다. 최종 영속 outbox는 0건이다. 로컬 디스크 실패 주입은 하지 않았으며 그 경로는 실제 hook을 사용하는 `test:inventory` 6개 회귀 테스트 근거와 구분한다.
+- 지정 테스트 영수증의 실제 private 업로드 → fixture 검수를 확인했다. `분석 제공자는 아직 연결 전` 고지는 유지된다. 한글 키보드를 열고 ADB 네이티브 스와이프 6회로 목록 끝의 입고·취소 버튼 전체에 도달해 취소했다. 이번 회귀에서는 입고·조리 차감을 확정하지 않았다. 업로드 중 닫기 버튼 노출은 확인했으나 진행 중 닫기의 지연 응답 검증은 이번에 반복하지 않았다.
+- 전후 기기 캐시 대조: 기존 lot 11개·원장 7개 모든 내용 불변(배열 순서·동등 UTC 날짜 표기 정규화). 새 leftover `inventory-1788876700429` 1개만 추가돼 최종 lot 12개·원장 7개다. 원격 DB 직접 조회 결과는 아니다.
+- Release는 `run-as` 읽기를 허용하지 않아, 앱을 강제 종료한 뒤 같은 서명 Debug를 임시 갱신하고 **Debug를 실행하지 않은 채** 캐시를 읽었다. 전후 모두 최종 Release로 복원했으며 마지막 설치 해시·비디버그 플래그·cold launch·냉장고 목록을 재확인했다. 앱 삭제·데이터 초기화는 하지 않았다.
+- `test:inventory` 6개와 `test:recipes` 빈칸/공백·부분 선택 회귀를 통과했다. 상세 빌드 로그·화면/XML·캐시·비교 결과·설치 식별자는 Git 제외 `.expo/android-final-qa/`에 보존했다. Java는 Android Studio 내장 JBR을 `JAVA_HOME`으로 지정했다.
+
+증거: [빈 잔량 차단](qa-artifacts/11-galaxy-final-empty-quantity.png), [한글 수정·버튼 활성](qa-artifacts/12-galaxy-final-hangul-quantity.png), [영수증 키보드·하단 버튼](qa-artifacts/13-galaxy-final-receipt-keyboard.png), [최종 재고](qa-artifacts/14-galaxy-final-inventory.png).
+
 ## 재현
 
 README의 의존성·환경 변수·Android SDK/JDK 준비 후 Expo 네이티브 프로젝트가 없으면 `npx expo prebuild --platform android`로 생성한다. 저장소 루트에서 다음을 실행한다.
@@ -18,7 +32,7 @@ adb -s R3CY70MDN2M shell am start -n com.parkjsoo.namgimeopsi/.MainActivity
 
 APK: `android/app/build/outputs/apk/release/app-release.apk` (Git 제외)
 
-최신 APK SHA-256: `61b1b87aa495e62c5418e9eb075d29e6b719027219a9bed34d84d1223e510268`
+이전 APK SHA-256 (`eca2a79`): `61b1b87aa495e62c5418e9eb075d29e6b719027219a9bed34d84d1223e510268`
 
 전문 리뷰의 저장 실패 재시도·진행 중 닫기 수정 후 Release를 재빌드·갱신 설치했다. 아래 사진 증거와 오프라인 QA는 직전 APK(`16cc4321d97f79aa7f2791ed27376b12627894843af18ab233fa3f51e5d78374`) 기준이며 최신 수정의 검증 범위는 [QA 기록](09-device-qa.md)의 전문 리뷰 수정 항목을 따른다.
 
@@ -44,5 +58,5 @@ APK: `android/app/build/outputs/apk/release/app-release.apk` (Git 제외)
 
 - Android 16의 현재 Expo ImagePicker는 시스템 Photo Picker를 쓰며 런타임 사진 읽기 권한 배열이 비어 있다. 설치된 앱도 READ_MEDIA_IMAGES/READ_EXTERNAL_STORAGE를 요청하지 않는다. 따라서 이 빌드에 iOS식 전체/제한/거부 QA를 그대로 적용하지 않는다. [Expo ImagePicker 문서](https://docs.expo.dev/versions/latest/sdk/imagepicker/)와 설치된 네이티브 구현을 확인했다.
 - 실제 HEIC·10MB 경계 이미지, 긴 이름, 접힘/펼침 전환은 이번에 실기기 검증하지 않았다. 기존 사용자가 완료한 세 흐름 저장·차감 QA는 Debug 결과이며 Release에서 세 흐름의 모든 저장을 다시 수행한 것은 아니다.
-- iOS 독립 실행 preview·핵심 QA는 이후 완료했다(`docs/11-ios-preview.md`). 영상 촬영은 남아 있다. iPhone 후속 전문 리뷰의 `e45f128`·`0e49aa6` 공통 코드 수정은 이 Android APK에 포함되지 않으며, 해당 최신 수정의 Android 갱신 설치는 별도다.
+- iOS 독립 실행 preview·핵심 QA는 이후 완료했다(`docs/11-ios-preview.md`). 영상 촬영은 남아 있다. iPhone 후속 전문 리뷰의 `e45f128`·`0e49aa6` 공통 코드 수정은 이 Android APK에 포함되지 않으며, 해당 최신 수정의 갱신 설치·회귀는 위 `14a7977` 최신 항목에서 완료했다.
 - 코드 리뷰에서 오프라인 hydrate가 빈 outbox에도 bootstrap을 만드는 경로와 기존 receipt pending 재적용의 멱등 의미 차이를 후속 테스트 대상으로 제안했다. 이번 실제 데이터에서 해당 문제나 손실을 재현하지 못했으며 이번 변경에 동기화 로직 수정은 포함하지 않았다.
