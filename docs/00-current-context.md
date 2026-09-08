@@ -81,6 +81,8 @@
 
 ## Last verified repository state
 
+- 전문 리뷰의 두 P2 수정 완료: `confirmReceipt`는 메모리에 동일 입고가 있어도 재고·outbox 영속화를 다시 시도한 뒤에만 `already-confirmed`를 반환한다. 저장 실패 반복은 계속 `failed`이며 복구 후 중복 없이 전송된다. 영수증 업로드·분석 단계에 `닫기`를 추가해 기존 세션 무효화 경로로 연결했다. 업로드 자체 중단/원본 삭제는 추가하지 않았다. 실제 hook 저장 실패·복구 3개 테스트와 실제 컴포넌트 지연 성공/실패 후 닫기 4개 테스트, 기존 도메인·영수증 테스트, TypeScript·lint가 통과했고 전문 에이전트 2명의 재리뷰에서 추가 차단 사항을 찾지 못했다. Android Release 재빌드·재설치 완료. 실제 iPhone에서 진행 중 닫기 버튼 표시·터치 확인은 다음 네이티브 QA 항목이다.
+
 - Android 로컬 preview 후속 검증: SM-F766N에 JS 내장 Release APK를 설치하고 Wi-Fi/모바일 데이터 없이 cold launch했다. 오프라인 사진 업로드에서 DNS 오류 원문 노출을 발견해 `scan-error.ts`로 사용자용 재시도 안내를 적용했고, Release에서 새 안내·온라인 복구 후 fixture 검수·키보드 유지 스크롤·취소를 확인했다. 네트워크는 원래 켜짐 상태로 복원했다. 두부 수량 의심은 화면 판독 오류였으며 로컬 캐시와 사용자 인증 REST 모두 해당 receipt lot `반 모`를 유지한다. 빌드 방법·해시·증거·남은 범위는 `docs/10-android-preview.md`를 따른다. 최종 Galaxy 설치는 로컬 Release이며 EAS/스토어 배포는 아니다. TypeScript·lint 및 오류 안내 분기 검사를 통과했다. 다음은 남은 경계 QA와 iOS preview/데모 촬영 준비다.
 
 - Galaxy 최신 QA: 사용자가 조리 완료에서 두부 `반 모` 부분 차감·애호박 전량 차감 및 종료·재실행 후 유지까지 확인했다. 에이전트도 ADB 화면에서 두부 `반 모`·`QA 카레 2인분`을 확인하고 사진 선택 취소→등록 방식 복귀→선택기 재진입을 직접 검증했다. 상세 증거 범위는 `docs/09-device-qa.md`를 따른다. 앞으로 가능한 실기기 조작은 ADB로 직접 수행하며 사용자에게 반복 위임하지 않는다. 남은 사진 권한·오류 복구 QA와 Metro 없는 preview 검증으로 이어간다.

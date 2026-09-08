@@ -197,6 +197,9 @@ export function ReceiptEntrySheet({
               <Text style={styles.analysisLead}>사진은 내 계정의 비공개 저장소에만 보관해요.</Text>
               <Text style={styles.analysisStep}>1. 파일 형식과 크기를 확인하고 있어요</Text>
               <Text style={styles.analysisStep}>2. 분석 작업을 준비하고 있어요</Text>
+              <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>닫기</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -209,6 +212,9 @@ export function ReceiptEntrySheet({
               <Text style={styles.analysisStep}>3. 품목과 보관 정보를 직접 확인해 주세요</Text>
               <Text style={styles.scanNotice}>분석 제공자는 아직 연결 전이에요. 실제 OCR 대신 고정된 fixture 초안을 사용해요.</Text>
               <Text style={styles.analysisNote}>결과는 저장 전에 직접 확인할 수 있어요.</Text>
+              <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>닫기</Text>
+              </Pressable>
             </View>
           ) : null}
 

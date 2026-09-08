@@ -18,7 +18,9 @@ adb -s R3CY70MDN2M shell am start -n com.parkjsoo.namgimeopsi/.MainActivity
 
 APK: `android/app/build/outputs/apk/release/app-release.apk` (Git 제외)
 
-SHA-256: `16cc4321d97f79aa7f2791ed27376b12627894843af18ab233fa3f51e5d78374`
+최신 APK SHA-256: `61b1b87aa495e62c5418e9eb075d29e6b719027219a9bed34d84d1223e510268`
+
+전문 리뷰의 저장 실패 재시도·진행 중 닫기 수정 후 Release를 재빌드·갱신 설치했다. 아래 사진 증거와 오프라인 QA는 직전 APK(`16cc4321d97f79aa7f2791ed27376b12627894843af18ab233fa3f51e5d78374`) 기준이며 최신 수정의 검증 범위는 [QA 기록](09-device-qa.md)의 전문 리뷰 수정 항목을 따른다.
 
 ## 직접 확인한 결과
 

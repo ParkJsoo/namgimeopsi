@@ -242,7 +242,17 @@ export function useInventory() {
 
   const confirmReceipt = async (draft: ReceiptReviewDraft): Promise<ReceiptConfirmationResult> => {
     const previousState = stateRef.current;
-    if (isReceiptDraftAlreadyConfirmed(previousState, draft)) return 'already-confirmed';
+    if (isReceiptDraftAlreadyConfirmed(previousState, draft)) {
+      try {
+        // Optimistic memory may contain an intake whose disk write failed.
+        // Retry the state and outbox write before reporting a saved duplicate.
+        await persist(previousState, queueRef.current);
+        await flushSyncQueue();
+        return 'already-confirmed';
+      } catch {
+        return 'failed';
+      }
+    }
     const nextState = confirmReceiptDraft(previousState, draft, { occurredAt: new Date().toISOString() });
     if (nextState === previousState) return 'failed';
     const newItems = nextState.items.filter((item) => !previousState.items.some((current) => current.id === item.id));

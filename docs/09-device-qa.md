@@ -13,6 +13,12 @@
 
 에이전트가 직접 수행한 오프라인 실패·복구, 시스템 사진 선택기 권한 범위, Release 설치·Metro 없는 실행, 키보드 회귀 및 캐시/원격 lot 대조는 [Android preview 기록](10-android-preview.md)을 따른다. DNS 오류 원문 노출을 사용자용 재시도 안내로 수정했다. 아래 이전 기록의 preview 미완료 표기는 이 최신 Android 결과로 대체하며, iOS preview·HEIC/용량 경계·접힘 QA는 남아 있다.
 
+## 전문 리뷰 수정·자동 회귀 검증 (2026-09-08)
+
+- 저장 실패 후 동일 영수증 재시도가 잘못 `already-confirmed`가 되는 경로를 수정했다. `npm run test:inventory`는 실제 hook을 실행하고 저장소·네트워크 경계만 대체해 반복 저장 실패, 복구 후 6개 lot/6개 원장·RPC 1회, 원격 실패 후 outbox 재시도 3개 경우를 검증한다.
+- 업로드·분석 두 단계에 `닫기`를 추가했다. `npm run test:receipts`의 새 컴포넌트 테스트는 단계별 닫기 후 지연 성공/실패 4개 경우에서 재진입 화면 유지·오래된 응답 차단·재고 확정 미호출을 검증한다. 실제 업로드 중단/원본 삭제를 뜻하지 않는다.
+- 기존 도메인·날짜·세션 테스트, TypeScript·lint 통과. 전문 에이전트 2명의 수정 재리뷰에서 추가 차단 이슈 없음. Android Release 빌드·갱신 설치 성공. 저장 공간 부족을 본체에 유발하거나 iPhone의 새 닫기 버튼을 실제 터치한 결과는 아니며, 그 네이티브 확인과 나머지 경계 QA는 구분한다.
+
 ## 환경과 범위
 
 - 코드 기준: `d960a6c` (`fix: allow cancelling inventory editor on iOS`)
