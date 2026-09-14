@@ -7,7 +7,6 @@ import {
   completeCookingSession,
   completeInventoryItems,
   getActiveInventoryItems,
-  mergeMissingRecommendationDates,
   parseInventoryState,
 } from '../inventory/ledger.ts';
 import { applyPendingInventorySync, createBootstrapInventorySyncOperations } from '../inventory/sync-queue.ts';
@@ -186,11 +185,8 @@ test('저장소 상태는 v1 배열을 v2 원장 상태로 안전하게 이관�
   equal(parseInventoryState({ version: 1, items: seedInventory }), null, '알 수 없는 상태 거부');
 
   const legacyItems = seedInventory.map(({ recommendedUseByAt: _recommendedUseByAt, ...item }) => item);
-  const enriched = mergeMissingRecommendationDates(
-    { version: 2, items: legacyItems, events: [] },
-    seedInventory,
-  );
-  equal(enriched.items.find((item) => item.id === 'leftover-chicken')?.recommendedUseByAt, '2026-08-29', '시드 lot ISO 날짜 보완');
+  const migratedLegacy = parseInventoryState(legacyItems);
+  equal(migratedLegacy?.items[0]?.recommendedUseByAt, undefined, '날짜가 없는 과거 재고에 시드 날짜를 추측해 넣지 않는다');
 });
 
 test('원격 상태 위에 대기 중인 재고 변경을 순서대로 다시 적용한다', () => {

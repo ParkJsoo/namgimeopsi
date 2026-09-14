@@ -11,20 +11,21 @@ import * as receiptConfirmation from '../receipts/confirm-receipt.ts';
 import { receiptReviewFixture } from '../receipts/fixture.ts';
 
 // Exercise the actual hook's persistence ordering without native modules or a
-// remote project. Hydration is skipped so each case starts with empty inventory.
+// remote project. Hydration can run against a durable cache and remote snapshot.
 const hookCode = ts.transpileModule(
   readFileSync(new URL('./use-inventory.ts', import.meta.url), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: false } },
 ).outputText;
 
-function createHarness() {
-  const durable = new Map();
+function createHarness(options = {}) {
+  const durable = options.durable ?? new Map();
+  const remote = options.remote ?? { version: 2, items: [], events: [] };
   const controls = {
     failStorage: false,
     failStorageAt: null,
     storageAttempts: 0,
     attemptedWrites: [],
-    failRemote: false,
+    failRemote: options.offline ?? false,
     remoteCalls: 0,
     cookingCalls: [],
   };
@@ -36,6 +37,7 @@ function createHarness() {
   const modules = {
     '@react-native-async-storage/async-storage': {
       default: {
+        getItem: async (key) => durable.get(key) ?? null,
         multiSet: async (entries) => {
           controls.storageAttempts += 1;
           controls.attemptedWrites.push(new Map(entries));
@@ -45,19 +47,28 @@ function createHarness() {
       },
     },
     react: {
-      useEffect: () => {},
+      useEffect: (effect) => { if (options.hydrate) effect(); },
       useRef: (value) => ({ current: value }),
       useState: (value) => [value, () => {}],
     },
     './ledger': ledger,
     './dates': dates,
-    './seed': { seedInventory: [] },
+    './seed': { seedInventory: options.seed ?? [] },
     './sync-queue': syncQueue,
     '../receipts/confirm-receipt': receiptConfirmation,
     './supabase-store': {
-      ensureInventoryUser: async () => ({ id: 'test-user' }),
+      ensureInventoryUser: async () => {
+        if (options.hydrate && controls.failRemote) throw new Error('offline');
+        return { id: 'test-user' };
+      },
+      loadRemoteInventory: async () => structuredClone(remote),
       commitReceiptIntake: remoteWrite,
-      upsertInventoryItems: remoteWrite,
+      upsertInventoryItems: async (_user, items) => {
+        await remoteWrite();
+        const merged = new Map(remote.items.map((item) => [item.id, item]));
+        items.forEach((item) => merged.set(item.id, structuredClone(item)));
+        remote.items = [...merged.values()];
+      },
       commitCookingSession: async (events) => {
         controls.cookingCalls.push(events);
         return remoteWrite();
@@ -234,4 +245,31 @@ test('add and edit persist the same calendar date for display, ranking, and the 
   assert.equal(readState().items[0].recommendedUseByAt, undefined);
   assert.throws(() => hook.update(item.id, { ...leftoverDraft, recommendedUseBy: '2026-02-30' }));
   assert.equal(readState().items[0].recommendedUseByAt, undefined);
+});
+
+
+test('cleared seed date survives offline hydration, reconnect and another restart', async () => {
+  const seed = { id: 'tofu', name: '두부', quantity: '1모', kind: 'ingredient', storage: '냉장', recommendedUseBy: '이틀 안', recommendedUseByAt: '2026-08-31', createdAt: '2026-08-29T00:00:00Z', reason: '' };
+  const initial = { version: 2, items: [seed], events: [] };
+  const durable = new Map([['namgimeopsi.inventory.v2', JSON.stringify(initial)]]);
+  const remote = structuredClone(initial);
+  const options = { hydrate: true, seed: [seed], durable, remote };
+  const first = createHarness(options);
+  await settle();
+  first.hook.update(seed.id, { ...seed, recommendedUseBy: '' });
+  await settle();
+  assert.equal(remote.items[0].recommendedUseByAt, undefined);
+  assert.deepEqual(first.readQueue(), []);
+  const offline = createHarness({ ...options, offline: true });
+  await settle();
+  assert.equal(offline.readState().items[0].recommendedUseByAt, undefined);
+  assert.equal(offline.readQueue()[0].items[0].recommendedUseByAt, undefined);
+  offline.controls.failRemote = false;
+  offline.hook.retrySync();
+  await settle();
+  assert.deepEqual(offline.readQueue(), []);
+  assert.equal(remote.items[0].recommendedUseByAt, undefined);
+  const restarted = createHarness(options);
+  await settle();
+  assert.equal(restarted.readState().items[0].recommendedUseByAt, undefined);
 });

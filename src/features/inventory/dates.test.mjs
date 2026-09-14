@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyDraftDates, compareInventoryDates, dateAfterDays, getDateDescription, getDateLabel, getFoodStatus, isValidDateInput, localDate } from './dates.ts';
-import { projectAvailableFoods } from '../recipes/recommendations.ts';
+import { getLiveRecipeRecommendations, projectAvailableFoods } from '../recipes/recommendations.ts';
 
 const item = { id: 'test', name: '두부', quantity: '1모', kind: 'ingredient', storage: '냉장', recommendedUseBy: '이번 주 안', recommendedUseByAt: '2026-09-01', createdAt: '2026-08-29T00:00:00Z', reason: '' };
 test('stale labels cannot override the shared date basis in the list and recommendation', () => {
@@ -57,4 +57,19 @@ test('inventory sorts by the same urgency and actual day', () => {
   const today = { ...item, id: 'today', recommendedUseByAt: '2026-09-09' };
   const unknown = { ...item, id: 'unknown', recommendedUseByAt: undefined };
   assert.deepEqual([unknown, today, item].sort((a, b) => compareInventoryDates(a, b, '2026-09-09')).map(i => i.id), ['test', 'today', 'unknown']);
+});
+
+
+test('overdue recipe reasons retain the date warning, including mixed urgency', () => {
+  const zucchini = { ...item, id: 'zucchini', name: '애호박', recommendedUseByAt: '2026-09-14' };
+  const recommendations = getLiveRecipeRecommendations([item, zucchini], '2026-09-14');
+  const bowl = recommendations.find((entry) => entry.recipe.id === 'tofu-zucchini-bowl');
+  assert(bowl);
+  assert(bowl.reason.includes('두부: 기준 날짜가 지났어요. 사용 전 상태를 확인해 주세요.'));
+  assert(!bowl.reason.includes('먼저 쓰기 좋아요'));
+  assert(bowl.reason.includes('부족 재료가 없어요'));
+  assert(bowl.reason.includes('15분'));
+  const current = getLiveRecipeRecommendations([{ ...item, recommendedUseByAt: '2026-09-14' }, zucchini], '2026-09-14')[0];
+  assert(current.reason.includes('먼저 쓰기 좋아요'));
+  assert(!current.reason.includes('지났어요'));
 });

@@ -44,14 +44,16 @@ function withObjectParticle(label: string) {
   return `${label}${hasFinalConsonant ? '을' : '를'}`;
 }
 
-function buildReason(soonToUseIngredients: string[], missingIngredients: string[], cookMinutes: number) {
+function buildReason(soonToUseIngredients: string[], overdueIngredients: string[], missingIngredients: string[], cookMinutes: number) {
   const soonToUseLabel =
     soonToUseIngredients.length === 1
       ? soonToUseIngredients[0]
       : soonToUseIngredients.length === 2
         ? soonToUseIngredients.join('와 ')
         : `${soonToUseIngredients.slice(0, 2).join(', ')} 등`;
-  const usage = soonToUseIngredients.length
+  const usage = overdueIngredients.length
+    ? `${overdueIngredients.join(', ')}: 기준 날짜가 지났어요. 사용 전 상태를 확인해 주세요.`
+    : soonToUseIngredients.length
     ? `${withObjectParticle(soonToUseLabel)} 먼저 쓰기 좋아요.`
     : '보유 재료를 활용하기 좋아요.';
   const missing = missingIngredients.length ? ` 부족 재료: ${missingIngredients.join(', ')}.` : ' 부족 재료가 없어요.';
@@ -88,6 +90,9 @@ export function rankRecipes(
           return status === 'overdue' || status === 'today' || status === 'soon';
         })
         .map((ingredient) => ingredient.foodName);
+      const overdueIngredients = availableIngredients
+        .filter((ingredient) => availableByName.get(normalizeFoodName(ingredient.foodName))?.consumptionStatus === 'overdue')
+        .map((ingredient) => ingredient.foodName);
       const coverage = scoredIngredients.length ? availableIngredients.length / scoredIngredients.length : 1;
       const score = Math.round(
         coverage * coverageWeight +
@@ -102,7 +107,7 @@ export function rankRecipes(
         availableIngredients: availableIngredients.map((ingredient) => ingredient.foodName),
         missingIngredients,
         soonToUseIngredients,
-        reason: buildReason(soonToUseIngredients, missingIngredients, recipe.cookMinutes),
+        reason: buildReason(soonToUseIngredients, overdueIngredients, missingIngredients, recipe.cookMinutes),
       };
     })
     .filter((recommendation) => recommendation.missingIngredients.length <= 2)

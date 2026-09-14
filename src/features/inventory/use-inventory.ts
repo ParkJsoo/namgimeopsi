@@ -6,7 +6,6 @@ import {
   completeCookingSession as completeCookingSessionState,
   completeInventoryItems,
   getActiveInventoryItems,
-  mergeMissingRecommendationDates,
   parseInventoryState,
   type CompletionContext,
   type CookingConsumption,
@@ -143,7 +142,7 @@ export function useInventory() {
         AsyncStorage.getItem(syncQueueKey),
       ]);
       const parsed = parseInventoryState(parseStoredJson(saved ?? legacySaved));
-      const localState = mergeMissingRecommendationDates(parsed ?? { version: 2, items: seedInventory, events: [] }, seedInventory);
+      const localState = parsed ?? { version: 2, items: seedInventory, events: [] };
       const savedOperations = parseInventorySyncQueue(parseStoredJson(savedQueue));
 
       // 원격 요청보다 로컬 cache를 먼저 기준으로 잡아, 요청 실패가 기존 재고를 지우지 못하게 한다.
