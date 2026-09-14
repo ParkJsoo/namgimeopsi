@@ -4,6 +4,7 @@ import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 
+import * as dates from './dates.ts';
 import * as ledger from './ledger.ts';
 import * as syncQueue from './sync-queue.ts';
 import * as receiptConfirmation from '../receipts/confirm-receipt.ts';
@@ -49,6 +50,7 @@ function createHarness() {
       useState: (value) => [value, () => {}],
     },
     './ledger': ledger,
+    './dates': dates,
     './seed': { seedInventory: [] },
     './sync-queue': syncQueue,
     '../receipts/confirm-receipt': receiptConfirmation,
@@ -134,7 +136,7 @@ test('remote failure retains a durable receipt and retry drains its outbox witho
 });
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
-const leftoverDraft = { name: 'QA curry', quantity: '1인분', kind: 'leftover', storage: '냉장', recommendedUseBy: '내일까지' };
+const leftoverDraft = { name: 'QA curry', quantity: '1인분', kind: 'leftover', storage: '냉장', recommendedUseBy: '2026-09-10' };
 
 test('sync retry persists a failed leftover addition before sending its original outbox operation', async () => {
   const { hook, controls, durable, readState, readQueue } = createHarness();
@@ -210,4 +212,26 @@ test('sync retry persists a completed dequeue even when the in-memory outbox is 
   assert.deepEqual(readQueue(), []);
   assert.equal(readState().items.length, 1);
   assert.equal(controls.remoteCalls, 1, 'Retry only needs to persist the completed dequeue');
+});
+
+
+test('add and edit persist the same calendar date for display, ranking, and the outbox', async () => {
+  const { hook, controls, readState, readQueue } = createHarness();
+  controls.failRemote = true;
+  hook.add(leftoverDraft);
+  await settle();
+  const item = readState().items[0];
+  assert.equal(item.recommendedUseByAt, '2026-09-10');
+  assert.ok(Number.isFinite(Date.parse(item.storageStartedAt)));
+  assert.equal(readQueue()[0].items[0].recommendedUseByAt, '2026-09-10');
+  hook.update(item.id, { ...leftoverDraft, recommendedUseBy: '2026-09-12' });
+  await settle();
+  assert.equal(readState().items[0].recommendedUseByAt, '2026-09-12');
+  assert.equal(readState().items[0].storageStartedAt, item.storageStartedAt);
+  assert.equal(readQueue().at(-1).items[0].recommendedUseByAt, '2026-09-12');
+  hook.update(item.id, { ...leftoverDraft, recommendedUseBy: '' });
+  await settle();
+  assert.equal(readState().items[0].recommendedUseByAt, undefined);
+  assert.throws(() => hook.update(item.id, { ...leftoverDraft, recommendedUseBy: '2026-02-30' }));
+  assert.equal(readState().items[0].recommendedUseByAt, undefined);
 });
