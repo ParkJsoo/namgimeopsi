@@ -36,8 +36,8 @@ export function RecipeCompletionSheet({
     modes: Object.fromEntries(consumedItems.map((item) => [item.id, 'all'])),
     remainingQuantities: Object.fromEntries(consumedItems.map((item) => [item.id, item.quantity])),
   };
-  const [savedDraft, setSavedDraft] = useState(defaultDraft);
-  const draft = savedDraft.key === completionKey ? savedDraft : defaultDraft;
+  const [savedDraft, setSavedDraft] = useState<CompletionDraft | null>(null);
+  const draft = savedDraft?.key === completionKey ? savedDraft : defaultDraft;
 
   const selectedItems = groups.flatMap(([name, items]) => items.filter((item) => item.id === draft.selected[name]));
   const consumptions = selectedItems.map<CookingConsumption>((item) => ({
@@ -53,7 +53,7 @@ export function RecipeCompletionSheet({
   );
   const canConfirm = Boolean(recommendation && hasValidQuantities && hasChanges);
 
-  const close = () => { setSavedDraft(defaultDraft); onClose(); };
+  const close = () => { setSavedDraft(null); onClose(); };
 
   return (
     <Modal animationType="slide" transparent visible={recommendation !== null} onRequestClose={close}>
@@ -125,7 +125,7 @@ export function RecipeCompletionSheet({
           accessibilityRole="button"
           accessibilityState={{ disabled: !canConfirm }}
           disabled={!canConfirm}
-          onPress={() => { if (canConfirm) { onConfirm(consumptions); setSavedDraft(defaultDraft); } }}
+          onPress={() => { if (canConfirm) { onConfirm(consumptions); setSavedDraft(null); } }}
           style={[styles.primaryButton, !canConfirm && styles.primaryButtonDisabled]}>
           <Text style={styles.primaryButtonText}>재료 사용 완료</Text>
         </Pressable>

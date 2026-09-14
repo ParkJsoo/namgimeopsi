@@ -21,6 +21,7 @@ function harness(items = [
   const slots = [];
   let cursor = 0;
   let confirmations = 0;
+  let visible = true;
   let state = { version: 2, items, events: [] };
   const mocks = {
     '../inventory/dates': dates,
@@ -55,16 +56,18 @@ function harness(items = [
   return {
     get state() { return state; },
     get confirmations() { return confirmations; },
+    reopen() { visible = true; },
     render() {
       cursor = 0;
       return RecipeCompletionSheet({
-        recommendation: { recipe: { id: 'test-recipe', title: '애호박 두부덮밥' } },
-        consumedItems: items,
+        recommendation: visible ? { recipe: { id: 'test-recipe', title: '애호박 두부덮밥' } } : null,
+        consumedItems: visible ? state.items.filter((item) => !state.events.some((event) => event.inventoryItemId === item.id && event.type === 'consume-all')) : [],
         referenceDate: '2026-09-14',
-        onClose() {},
+        onClose() { visible = false; },
         onConfirm(consumptions) {
           confirmations++;
-          state = completeCookingSession(state, consumptions, { sessionId: 'test-session', occurredAt: '2026-09-08T00:00:00Z' });
+          state = completeCookingSession(state, consumptions, { sessionId: `test-session-${confirmations}`, occurredAt: '2026-09-08T00:00:00Z' });
+          visible = false;
         },
       });
     },
@@ -176,8 +179,42 @@ console.log('✓ Choosing another lot updates only its quantity and ledger');
   assert.equal(button(app.render(), '재료 사용 완료').props.disabled, true);
   button(app.render(), '아직 있어요').props.onPress();
   assert.equal(app.state.events.length, 0);
+  assert.equal(app.render().props.visible, false);
+  app.reopen();
   const radios = nodes(app.render()).filter((node) => node.props?.accessibilityRole === 'radio');
   assert.equal(radios[0].props.accessibilityState.checked, true);
   assert.equal(button(app.render(), '재료 사용 완료').props.disabled, false);
 }
 console.log('✓ Cancel leaves all lots unchanged and resets selection and invalid draft');
+
+for (const renderWhileHidden of [true, false]) {
+  const app = harness([{ id: 'tofu', name: '두부', quantity: '1모' }]);
+  remaining(app, '반 모');
+  button(app.render(), '재료 사용 완료').props.onPress();
+  assert.equal(app.state.items[0].quantity, '반 모');
+  if (renderWhileHidden) assert.equal(app.render().props.visible, false);
+  app.reopen();
+  button(app.render(), '남은 양').props.onPress();
+  let tree = app.render();
+  assert.equal(nodes(tree).find((node) => node.type === 'TextInput').props.value, '반 모');
+  assert.equal(button(tree, '재료 사용 완료').props.disabled, true);
+  button(tree, '재료 사용 완료').props.onPress();
+  assert.equal(app.state.events.length, 1);
+  assert.equal(app.state.items[0].quantity, '반 모');
+
+  // Cancel a changed draft and reopen against the current inventory again.
+  nodes(tree).find((node) => node.type === 'TextInput').props.onChangeText('조금 남음');
+  button(app.render(), '아직 있어요').props.onPress();
+  if (renderWhileHidden) assert.equal(app.render().props.visible, false);
+  app.reopen();
+  button(app.render(), '남은 양').props.onPress();
+  tree = app.render();
+  assert.equal(nodes(tree).find((node) => node.type === 'TextInput').props.value, '반 모');
+  assert.equal(button(tree, '재료 사용 완료').props.disabled, true);
+
+  nodes(tree).find((node) => node.type === 'TextInput').props.onChangeText('조금 남음');
+  button(app.render(), '재료 사용 완료').props.onPress();
+  assert.equal(app.state.items[0].quantity, '조금 남음');
+  assert.deepEqual(app.state.events.map((event) => event.remainingQuantityLabel), ['반 모', '조금 남음']);
+}
+console.log('✓ Reopening after partial consumption uses current quantity, blocks unchanged saves and clears cancelled drafts, with or without a hidden render');
