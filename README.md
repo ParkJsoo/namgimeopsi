@@ -146,8 +146,8 @@ npm run android -- --device
 
 ## 다음 단계
 
-- 갤럭시 주요 실기기 QA와 로컬 Release의 Metro 없는 실행을 확인했습니다. [Android preview 빌드·검증 기록](docs/10-android-preview.md)을 참고하세요. iOS preview와 남은 경계 QA는 진행 예정입니다.
-- [2분 데모 대본·케이스 스터디 초안](docs/08-portfolio-demo.md)을 바탕으로 촬영하기 (영상은 아직 미제작)
+- Android·iOS 핵심 QA와 로컬 Release 독립 실행은 확인했습니다. 최신 날짜 수정은 전용 iOS 시뮬레이터에서 검증했으며, 추가 실기기 경계 QA는 후속입니다. [Android](docs/10-android-preview.md)·[iOS](docs/11-ios-preview.md) 설치 이력을 참고하세요.
+- [완성된 120초 로컬 영상](docs/17-demo-production-result.md)의 사용자 검토 후 공개처 결정·업로드·링크 연결
 - 사용성 테스트로 검수 편집 비용과 추천 근거 다듬기
 
 실제 OCR, 바코드 DB, 가족 공유, 자유형 AI 요리 챗, 영양·알레르기 분석은 이 MVP의 범위 밖입니다.
