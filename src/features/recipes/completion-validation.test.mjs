@@ -4,6 +4,9 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import ts from 'typescript';
+import * as dates from '../inventory/dates.ts';
+import * as lots from './inventory-lots.ts';
+import { getLiveRecipeRecommendations } from './recommendations.ts';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const element = (type, props) => ({ type, props });
@@ -14,11 +17,14 @@ function harness(items = [
   { id: 'tofu', name: '두부', quantity: '1모' },
   { id: 'zucchini', name: '애호박', quantity: '1개' },
 ]) {
+  items = items.map((item) => ({ storage: '냉장', createdAt: '2026-09-01T00:00:00Z', ...item }));
   const slots = [];
   let cursor = 0;
   let confirmations = 0;
   let state = { version: 2, items, events: [] };
   const mocks = {
+    '../inventory/dates': dates,
+    './inventory-lots': lots,
     react: {
       useState(initial) {
         const index = cursor++;
@@ -54,6 +60,7 @@ function harness(items = [
       return RecipeCompletionSheet({
         recommendation: { recipe: { id: 'test-recipe', title: '애호박 두부덮밥' } },
         consumedItems: items,
+        referenceDate: '2026-09-14',
         onClose() {},
         onConfirm(consumptions) {
           confirmations++;
@@ -130,3 +137,47 @@ console.log('✓ Keeping one lot unchanged still permits consumption of another 
   assert.equal(app.state.events.length, 0);
 }
 console.log('✓ Whitespace-only differences do not enable an unchanged single-lot session');
+
+
+const duplicateLots = [
+  { id: 'new-tofu', name: '두부', quantity: '1모', storage: '냉동', recommendedUseByAt: '2026-09-20', createdAt: '2026-09-14T00:00:00Z' },
+  { id: 'old-tofu', name: '두부', quantity: '1모', storage: '냉장', recommendedUseByAt: '2026-09-13', createdAt: '2026-09-01T00:00:00Z' },
+];
+{
+  const candidates = lots.getCookingCandidates(duplicateLots, ['두부', ' 두부 '], '2026-09-14');
+  assert.deepEqual(candidates.map((i) => i.id), ['old-tofu', 'new-tofu']);
+  assert(getLiveRecipeRecommendations(duplicateLots, '2026-09-14')[0].reason.includes('기준 날짜가 지났어요'));
+  const app = harness(candidates);
+  const tree = app.render();
+  const radios = nodes(tree).filter((node) => node.props?.accessibilityRole === 'radio');
+  assert.equal(radios.length, 2);
+  assert.equal(radios[0].props.accessibilityState.checked, true);
+  assert(radios[0].props.accessibilityLabel.includes('냉장'));
+  assert(radios[0].props.accessibilityLabel.includes('2026-09-13'));
+  button(tree, '재료 사용 완료').props.onPress();
+  assert.deepEqual(app.state.events.map((e) => e.inventoryItemId), ['old-tofu']);
+}
+console.log('✓ The recommended urgent lot is the default completion target, independent of inventory order');
+{
+  const app = harness(duplicateLots);
+  const newer = nodes(app.render()).find((node) => node.props?.accessibilityRole === 'radio' && node.props.accessibilityLabel.includes('2026-09-20'));
+  newer.props.onPress();
+  remaining(app, '반 모');
+  button(app.render(), '재료 사용 완료').props.onPress();
+  assert.deepEqual(app.state.events.map((e) => [e.inventoryItemId, e.type]), [['new-tofu', 'consume']]);
+  assert.equal(app.state.items.find((i) => i.id === 'new-tofu').quantity, '반 모');
+  assert.equal(app.state.items.find((i) => i.id === 'old-tofu').quantity, '1모');
+}
+console.log('✓ Choosing another lot updates only its quantity and ledger');
+{
+  const app = harness(duplicateLots);
+  nodes(app.render()).find((node) => node.props?.accessibilityRole === 'radio' && node.props.accessibilityLabel.includes('2026-09-20')).props.onPress();
+  remaining(app, '');
+  assert.equal(button(app.render(), '재료 사용 완료').props.disabled, true);
+  button(app.render(), '아직 있어요').props.onPress();
+  assert.equal(app.state.events.length, 0);
+  const radios = nodes(app.render()).filter((node) => node.props?.accessibilityRole === 'radio');
+  assert.equal(radios[0].props.accessibilityState.checked, true);
+  assert.equal(button(app.render(), '재료 사용 완료').props.disabled, false);
+}
+console.log('✓ Cancel leaves all lots unchanged and resets selection and invalid draft');

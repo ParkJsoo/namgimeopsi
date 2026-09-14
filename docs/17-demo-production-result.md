@@ -10,6 +10,8 @@
 - [대표 이미지](qa-artifacts/production/poster.png), [최종 잔량](qa-artifacts/production/final-inventory.png), [장면별 검수표](qa-artifacts/production/contact-sheet.jpg), [설명 자막 원문](qa-artifacts/production/captions.ko.srt), [시간표](qa-artifacts/production/timeline.json).
 - 영상 파일은 Git 제외 로컬 산출물이다. clone으로 전달되지 않으며, 외부 업로드·공개 링크·push는 아직 없다. 커밋된 이미지·자막·기록으로 제작 근거를 남긴다.
 
+> 후속 코드 변경: 동명 lot 선택 UI는 촬영 이후 추가됐다. 이 영상은 `454ac3a`의 단일 lot 흐름 근거이며 최신 UI 전체를 보여 주는 영상은 아니다. [후속 QA](19-lot-selection-qa.md).
+
 ## 실제 촬영과 데이터 검증
 
 전용 `Namgimeopsi Demo iPhone 13 mini` / iOS 26.5 / UDID `891FA725-0B92-41D6-95B0-FC03729146B4`만 사용했다. 입력은 XCTest 실제 터치와 한글 키보드로 수행했다.

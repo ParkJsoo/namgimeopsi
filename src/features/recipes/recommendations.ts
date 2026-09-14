@@ -1,36 +1,16 @@
-import type { ConsumptionStatus } from '../domain/date-status.ts';
 import { getFoodStatus } from '../inventory/dates.ts';
 import { rankRecipes, type AvailableFood, type RecipeRecommendation } from '../domain/recipe-ranking.ts';
 import type { InventoryItem } from '../inventory/types.ts';
 
+import { groupInventoryLots } from './inventory-lots.ts';
 import { basePantryFoodNames, seedRecipes } from './seed.ts';
-
-const urgencyRank: Record<ConsumptionStatus, number> = {
-  overdue: 0,
-  today: 1,
-  soon: 2,
-  relaxed: 3,
-  unknown: 4,
-};
-
-function normalizeFoodName(name: string) {
-  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
-}
 
 /** 같은 이름의 재고 lot가 여러 개면 가장 먼저 확인할 상태 하나를 추천 입력으로 남긴다. */
 export function projectAvailableFoods(items: InventoryItem[], referenceDate: Date | string): AvailableFood[] {
-  const foodsByName = new Map<string, AvailableFood>();
-
-  items.forEach((item) => {
-    const food: AvailableFood = { name: item.name, consumptionStatus: getFoodStatus(item, referenceDate) };
-    const key = normalizeFoodName(item.name);
-    const existing = foodsByName.get(key);
-    if (!existing || urgencyRank[food.consumptionStatus] < urgencyRank[existing.consumptionStatus]) {
-      foodsByName.set(key, food);
-    }
-  });
-
-  return [...foodsByName.values()];
+  return [...groupInventoryLots(items, referenceDate).values()].map(([item]) => ({
+    name: item.name,
+    consumptionStatus: getFoodStatus(item, referenceDate),
+  }));
 }
 
 export function getLiveRecipeRecommendations(

@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardSheet } from '@/components/KeyboardSheet';
 import type { RecipeRecommendation } from '@/features/domain/recipe-ranking';
+import { getCookingCandidates } from '@/features/recipes/inventory-lots';
 import { compareInventoryDates, dateAfterDays, getDateLabel, isIsoDate, isValidDateInput, localDate } from '@/features/inventory/dates';
 import { useInventory } from '@/features/inventory/use-inventory';
 import {
@@ -29,9 +30,6 @@ import { RecipeCompletionSheet } from '@/features/recipes/RecipeCompletionSheet'
 import { getLiveRecipeRecommendations } from '@/features/recipes/recommendations';
 import { ReceiptEntrySheet } from '@/features/receipts/ReceiptEntrySheet';
 
-function normalizeFoodName(name: string) {
-  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
-}
 
 function statusTone(item: InventoryItem, referenceDate: string) {
   if (['overdue', 'today', 'unknown'].includes(getFoodStatus(item, referenceDate))) return styles.statusToday;
@@ -125,10 +123,8 @@ export default function HomeScreen() {
   const pendingConsumedItems = useMemo(() => {
     if (!pendingRecommendation) return [];
     const consumptionFoodNames = pendingRecommendation.recipe.consumptionFoodNames ?? pendingRecommendation.availableIngredients;
-    return consumptionFoodNames
-      .map((foodName) => inventory.find((item) => normalizeFoodName(item.name) === normalizeFoodName(foodName)))
-      .filter((item): item is InventoryItem => item !== undefined);
-  }, [inventory, pendingRecommendation]);
+    return getCookingCandidates(inventory, consumptionFoodNames, referenceDate);
+  }, [inventory, pendingRecommendation, referenceDate]);
 
   const visibleInventory = useMemo(
     () =>
@@ -413,6 +409,7 @@ export default function HomeScreen() {
       <RecipeCompletionSheet
         recommendation={pendingRecommendation}
         consumedItems={pendingConsumedItems}
+        referenceDate={referenceDate}
         onConfirm={(consumptions) => {
           if (!pendingRecommendation || !pendingConsumedItems.length) return;
           const didComplete = completeCookingSession(consumptions, {
