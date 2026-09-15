@@ -212,7 +212,14 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingScreen}>
-          <Text style={styles.eyebrow}>내 냉장고를 불러오고 있어요.</Text>
+          {syncStatus === 'error' ? (
+            <>
+              <Text accessibilityRole="alert" style={styles.eyebrow}>저장된 재고를 읽지 못했어요. 다시 시도해 주세요.</Text>
+              <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
+                <Text style={styles.syncNoticeText}>다시 불러오기</Text>
+              </Pressable>
+            </>
+          ) : <Text style={styles.eyebrow}>내 냉장고를 불러오고 있어요.</Text>}
         </View>
       </SafeAreaView>
     );

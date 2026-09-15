@@ -18,10 +18,13 @@ const hookCode = ts.transpileModule(
 ).outputText;
 
 function createHarness(options = {}) {
+  const observed = [];
   const durable = options.durable ?? new Map();
   const remote = options.remote ?? { version: 2, items: [], events: [] };
   const controls = {
-    failStorage: false,
+    failReadKey: options.failReadKey,
+    reads: 0,
+    failStorage: options.failStorage ?? false,
     failStorageAt: null,
     storageAttempts: 0,
     attemptedWrites: [],
@@ -37,7 +40,7 @@ function createHarness(options = {}) {
   const modules = {
     '@react-native-async-storage/async-storage': {
       default: {
-        getItem: async (key) => durable.get(key) ?? null,
+        getItem: async (key) => { controls.reads++; if (controls.failReadKey === key) throw new Error('read unavailable'); return durable.get(key) ?? null; },
         multiSet: async (entries) => {
           controls.storageAttempts += 1;
           controls.attemptedWrites.push(new Map(entries));
@@ -49,7 +52,7 @@ function createHarness(options = {}) {
     react: {
       useEffect: (effect) => { if (options.hydrate) effect(); },
       useRef: (value) => ({ current: value }),
-      useState: (value) => [value, () => {}],
+      useState: (value) => { const index = observed.length; observed.push(value); return [value, (next) => { observed[index] = next; }]; },
     },
     './ledger': ledger,
     './dates': dates,
@@ -90,6 +93,7 @@ function createHarness(options = {}) {
   return {
     hook: exports.useInventory(),
     controls,
+    observed,
     durable,
     readState: () => JSON.parse(durable.get('namgimeopsi.inventory.v2')),
     readQueue: () => JSON.parse(durable.get('namgimeopsi.inventory.sync-queue.v1')),
@@ -333,4 +337,53 @@ test('quantity recovery preserves unresolved rows and receipt/cooking dependenci
     const queue = [invalid, dependency, correction];
     assert.deepEqual(syncQueue.recoverInvalidQuantityOperations(queue), queue);
   }
+});
+
+
+for (const key of ['namgimeopsi.inventory.v2', 'namgimeopsi.inventory.v1', 'namgimeopsi.inventory.sync-queue.v1']) {
+  test(`startup retries ${key} read without overwriting unread data`, async () => {
+    const item = { ...leftoverDraft, id: 'saved', reason: 'saved', createdAt: '2026-09-01T00:00:00Z' };
+    const state = { version: 2, items: [item], events: [] };
+    const queue = [{ id: 'pending', type: 'upsert-items', items: [item] }];
+    const durable = new Map([
+      ['namgimeopsi.inventory.v2', JSON.stringify(state)],
+      ['namgimeopsi.inventory.sync-queue.v1', JSON.stringify(queue)],
+    ]);
+    const before = new Map(durable);
+    const app = createHarness({ hydrate: true, durable, failReadKey: key });
+    await settle();
+    assert.equal(app.observed[1], false);
+    assert.equal(app.observed[2], 'error');
+    app.hook.retrySync();
+    await settle();
+    assert.deepEqual(durable, before);
+    assert.equal(app.controls.storageAttempts, 0);
+    assert.equal(app.controls.remoteCalls, 0);
+    assert.equal(app.controls.reads, 6);
+    app.controls.failReadKey = null;
+    app.hook.retrySync();
+    app.hook.retrySync();
+    await settle();
+    assert.equal(app.controls.reads, 9, 'Concurrent retry taps share one hydration');
+    assert.equal(app.observed[1], true);
+    assert.equal(app.observed[2], 'synced');
+    assert.deepEqual(app.readState(), state);
+    assert.deepEqual(app.readQueue(), []);
+    assert.equal(app.controls.remoteCalls, 1);
+  });
+}
+
+test('offline hydration catches cache write failure and retries the preserved snapshot', async () => {
+  const app = createHarness({ hydrate: true, offline: true, failStorage: true, seed: [{ ...leftoverDraft, id: 'saved' }] });
+  await settle();
+  assert.equal(app.observed[1], true);
+  assert.equal(app.observed[2], 'error');
+  assert.equal(app.controls.remoteCalls, 0);
+  app.controls.failStorage = false;
+  app.controls.failRemote = false;
+  app.hook.retrySync();
+  await settle();
+  assert.equal(app.readState().items[0].id, 'saved');
+  assert.deepEqual(app.readQueue(), []);
+  assert.equal(app.observed[2], 'synced');
 });
