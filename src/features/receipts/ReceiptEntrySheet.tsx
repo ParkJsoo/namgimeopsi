@@ -28,12 +28,14 @@ function createReviewDraft(scan?: Pick<ReceiptReviewDraft, 'scanJobId' | 'source
   };
 }
 
-function StoragePicker({ value, onChange }: { value: StoragePlace; onChange: (storage: StoragePlace) => void }) {
+function StoragePicker({ value, onChange, disabled = false }: { value: StoragePlace; disabled?: boolean; onChange: (storage: StoragePlace) => void }) {
   return (
     <View style={styles.storageRow}>
       {(['냉장', '냉동', '실온'] as StoragePlace[]).map((storage) => (
         <Pressable
           accessibilityRole="button"
+          disabled={disabled}
+          accessibilityState={{ disabled }}
           key={storage}
           onPress={() => onChange(storage)}
           style={[styles.storageOption, value === storage && styles.storageOptionSelected]}>
@@ -64,6 +66,8 @@ export function ReceiptEntrySheet({
   const [stage, setStage] = useState<ReceiptStage>('choice');
   const [draft, setDraft] = useState<ReceiptReviewDraft>(createReviewDraft);
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [confirmedCount, setConfirmedCount] = useState(0);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const reviewSession = useRef(createReviewSession());
@@ -116,12 +120,15 @@ export function ReceiptEntrySheet({
   const resetSheet = () => {
     reviewSession.current.invalidate();
     setStage('choice');
+    savingRef.current = false;
     setIsSaving(false);
+    setConfirmedCount(0);
     setSaveNotice(null);
     setScanNotice(null);
   };
 
   const closeSheet = () => {
+    if (savingRef.current) return;
     resetSheet();
     onClose();
   };
@@ -147,14 +154,23 @@ export function ReceiptEntrySheet({
   };
 
   const finishConfirmation = async () => {
-    if (!canConfirm) return;
+    if (!canConfirm || savingRef.current) return;
+    savingRef.current = true;
+    const submitted = { ...draft, items: draft.items.map((item) => ({ ...item })) };
     const isCurrent = reviewSession.current.capture();
     setIsSaving(true);
     setSaveNotice(null);
-    const result = await onConfirm(draft);
+    let result: ReceiptConfirmationResult;
+    try {
+      result = await onConfirm(submitted);
+    } catch {
+      result = 'failed';
+    }
     if (!isCurrent()) return;
+    savingRef.current = false;
     setIsSaving(false);
     if (result === 'confirmed') {
+      setConfirmedCount(getReceiptReviewCounts(submitted).included);
       setStage('complete');
       return;
     }
@@ -242,7 +258,9 @@ export function ReceiptEntrySheet({
                             </View>
                             <Pressable
                               accessibilityRole="button"
-                              onPress={() => setDraft((current) => updateReceiptDraftItem(current, item.id, { included: !item.included }))}
+                              disabled={isSaving}
+                              accessibilityState={{ disabled: isSaving }}
+                              onPress={() => setDraft((current) => savingRef.current ? current : updateReceiptDraftItem(current, item.id, { included: !item.included }))}
                               style={styles.excludeButton}>
                               <Text style={styles.excludeButtonText}>{item.included ? '제외' : '다시 포함'}</Text>
                             </Pressable>
@@ -251,31 +269,35 @@ export function ReceiptEntrySheet({
                             <>
                               <Text style={styles.fieldLabel}>식재료 이름</Text>
                               <TextInput
+                                editable={!isSaving}
                                 accessibilityLabel={`${item.rawName} 식재료 이름`}
                                 value={item.name}
-                                onChangeText={(name) => setDraft((current) => updateReceiptDraftItem(current, item.id, { name }))}
+                                onChangeText={(name) => setDraft((current) => savingRef.current ? current : updateReceiptDraftItem(current, item.id, { name }))}
                                 style={styles.input}
                               />
                               <Text style={styles.fieldLabel}>수량</Text>
                               <TextInput
+                                editable={!isSaving}
                                 accessibilityLabel={`${item.rawName} 수량`}
                                 value={item.quantity}
-                                onChangeText={(quantity) => setDraft((current) => updateReceiptDraftItem(current, item.id, { quantity }))}
+                                onChangeText={(quantity) => setDraft((current) => savingRef.current ? current : updateReceiptDraftItem(current, item.id, { quantity }))}
                                 style={styles.input}
                               />
                               <Text style={styles.fieldLabel}>보관 위치</Text>
                               <StoragePicker
+                                disabled={isSaving}
                                 value={item.storage}
-                                onChange={(storage) => setDraft((current) => updateReceiptDraftItem(current, item.id, { storage }))}
+                                onChange={(storage) => setDraft((current) => savingRef.current ? current : updateReceiptDraftItem(current, item.id, { storage }))}
                               />
                               <Text style={styles.fieldLabel}>권장 섭취일 (YYYY-MM-DD, 선택)</Text>
                               <TextInput
+                                editable={!isSaving}
                                 accessibilityLabel={`${item.rawName} 권장 섭취 시점`}
                                 value={item.recommendedUseByAt ?? ''}
                                 placeholder="예: 2026-09-20"
                                 autoCorrect={false}
                                 onChangeText={(value) =>
-                                  setDraft((current) => updateReceiptRecommendedDate(current, item.id, value))
+                                  setDraft((current) => savingRef.current ? current : updateReceiptRecommendedDate(current, item.id, value))
                                 }
                                 style={styles.input}
                               />
@@ -299,15 +321,15 @@ export function ReceiptEntrySheet({
                 style={[styles.primaryButton, !canConfirm && styles.primaryButtonDisabled]}>
                 <Text style={styles.primaryButtonText}>{isSaving ? '냉장고에 담는 중…' : `${counts.included}개 냉장고에 담기`}</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>아직 저장하지 않을게요</Text>
+              <Pressable accessibilityRole="button" disabled={isSaving} accessibilityState={{ disabled: isSaving }} onPress={closeSheet} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>{isSaving ? '저장 결과를 기다리고 있어요' : '아직 저장하지 않을게요'}</Text>
               </Pressable>
             </>
           ) : null}
 
           {stage === 'complete' ? (
             <View style={styles.completeBody}>
-              <Text style={styles.title}>{counts.included}개를 냉장고에 담았어요.</Text>
+              <Text style={styles.title}>{confirmedCount}개를 냉장고에 담았어요.</Text>
               <Text style={styles.copy}>두부처럼 먼저 쓰기 좋은 재료는 홈 추천에서 바로 확인할 수 있어요.</Text>
               <Pressable accessibilityRole="button" onPress={goHome} style={styles.primaryButton}>
                 <Text style={styles.primaryButtonText}>오늘의 한 끼 보기</Text>
