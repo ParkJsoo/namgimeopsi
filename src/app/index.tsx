@@ -165,12 +165,18 @@ export default function HomeScreen() {
     openCreate(kind);
   };
 
+  const canSaveItem = Boolean(draft.name.trim() && draft.quantity.trim()) && isValidDateInput(draft.recommendedUseBy);
+
   const saveItem = () => {
     if (!draft.name.trim()) {
       Alert.alert('식재료 이름을 입력해 주세요.');
       return;
     }
 
+    if (!draft.quantity.trim()) {
+      Alert.alert('남은 양을 입력해 주세요.');
+      return;
+    }
     if (!isValidDateInput(draft.recommendedUseBy)) {
       Alert.alert('실제 날짜를 YYYY-MM-DD로 입력해 주세요.');
       return;
@@ -206,7 +212,14 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingScreen}>
-          <Text style={styles.eyebrow}>내 냉장고를 불러오고 있어요.</Text>
+          {syncStatus === 'error' ? (
+            <>
+              <Text accessibilityRole="alert" style={styles.eyebrow}>저장된 재고를 읽지 못했어요. 다시 시도해 주세요.</Text>
+              <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
+                <Text style={styles.syncNoticeText}>다시 불러오기</Text>
+              </Pressable>
+            </>
+          ) : <Text style={styles.eyebrow}>내 냉장고를 불러오고 있어요.</Text>}
         </View>
       </SafeAreaView>
     );
@@ -216,6 +229,17 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.app}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {syncStatus !== 'synced' ? (
+            <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
+              <Text accessibilityRole={syncStatus === 'error' ? 'alert' : undefined} style={styles.syncNoticeText}>
+                {syncStatus === 'error'
+                  ? '저장 또는 동기화하지 못했어요. 탭해서 다시 시도해 주세요.'
+                  : syncStatus === 'offline'
+                    ? '오프라인으로 저장했어요. 연결되면 동기화해요.'
+                    : '재고를 안전하게 동기화하고 있어요.'}
+              </Text>
+            </Pressable>
+          ) : null}
           {activeTab === 'home' ? (
             <>
               <View style={styles.header}>
@@ -225,17 +249,7 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              {syncStatus !== 'synced' ? (
-                <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
-                  <Text style={styles.syncNoticeText}>
-                    {syncStatus === 'error'
-                      ? '동기화하지 못했어요. 탭해서 다시 시도해 주세요.'
-                      : syncStatus === 'offline'
-                        ? '오프라인으로 저장했어요. 연결되면 동기화해요.'
-                        : '재고를 안전하게 동기화하고 있어요.'}
-                  </Text>
-                </Pressable>
-              ) : null}
+
 
               <View style={styles.priorityCard}>
                 <Text style={styles.priorityHeading}>먼저 확인할 재고</Text>
@@ -367,6 +381,7 @@ export default function HomeScreen() {
             onChangeText={(quantity) => setDraft((current) => ({ ...current, quantity }))}
             style={styles.input}
           />
+          {!draft.quantity.trim() ? <Text accessibilityRole="alert" style={styles.safetyNote}>남은 양을 입력해 주세요.</Text> : null}
           <Text style={styles.fieldLabel}>보관 위치</Text>
           <StoragePicker value={draft.storage} onChange={(storage) => setDraft((current) => ({ ...current, storage }))} />
           <Text style={styles.fieldLabel}>권장 섭취일 (YYYY-MM-DD, 선택)</Text>
@@ -392,7 +407,7 @@ export default function HomeScreen() {
               ? editingId ? '보관 시작일은 유지해요. 권장 섭취일은 식품 안전을 보장하지 않아요.' : '보관 시작 시각을 기록해요. 권장 섭취일은 식품 안전을 보장하지 않아요.'
               : '포장 표기일과 별도로, 사용자가 정할 수 있는 권장 섭취 시점이에요.'}
           </Text>
-          <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isValidDateInput(draft.recommendedUseBy) }} disabled={!isValidDateInput(draft.recommendedUseBy)} onPress={saveItem} style={[styles.primaryButton, !isValidDateInput(draft.recommendedUseBy) && { opacity: 0.5 }]}>
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSaveItem }} disabled={!canSaveItem} onPress={saveItem} style={[styles.primaryButton, !canSaveItem && { opacity: 0.5 }]}>
             <Text style={styles.primaryButtonText}>{editingId ? '수정 완료' : '냉장고에 담기'}</Text>
           </Pressable>
           {editingId ? (

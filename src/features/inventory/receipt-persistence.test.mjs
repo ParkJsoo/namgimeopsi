@@ -18,10 +18,13 @@ const hookCode = ts.transpileModule(
 ).outputText;
 
 function createHarness(options = {}) {
+  const observed = [];
   const durable = options.durable ?? new Map();
   const remote = options.remote ?? { version: 2, items: [], events: [] };
   const controls = {
-    failStorage: false,
+    failReadKey: options.failReadKey,
+    reads: 0,
+    failStorage: options.failStorage ?? false,
     failStorageAt: null,
     storageAttempts: 0,
     attemptedWrites: [],
@@ -37,7 +40,7 @@ function createHarness(options = {}) {
   const modules = {
     '@react-native-async-storage/async-storage': {
       default: {
-        getItem: async (key) => durable.get(key) ?? null,
+        getItem: async (key) => { controls.reads++; if (controls.failReadKey === key) throw new Error('read unavailable'); return durable.get(key) ?? null; },
         multiSet: async (entries) => {
           controls.storageAttempts += 1;
           controls.attemptedWrites.push(new Map(entries));
@@ -49,7 +52,7 @@ function createHarness(options = {}) {
     react: {
       useEffect: (effect) => { if (options.hydrate) effect(); },
       useRef: (value) => ({ current: value }),
-      useState: (value) => [value, () => {}],
+      useState: (value) => { const index = observed.length; observed.push(value); return [value, (next) => { observed[index] = next; }]; },
     },
     './ledger': ledger,
     './dates': dates,
@@ -65,10 +68,12 @@ function createHarness(options = {}) {
       commitReceiptIntake: remoteWrite,
       upsertInventoryItems: async (_user, items) => {
         await remoteWrite();
+        if (items.some((item) => !item.quantity.trim())) throw new Error('quantity CHECK');
         const merged = new Map(remote.items.map((item) => [item.id, item]));
         items.forEach((item) => merged.set(item.id, structuredClone(item)));
         remote.items = [...merged.values()];
       },
+      deleteInventoryItem: async (id) => { await remoteWrite(); remote.items = remote.items.filter((item) => item.id !== id); },
       commitCookingSession: async (events) => {
         controls.cookingCalls.push(events);
         return remoteWrite();
@@ -88,6 +93,7 @@ function createHarness(options = {}) {
   return {
     hook: exports.useInventory(),
     controls,
+    observed,
     durable,
     readState: () => JSON.parse(durable.get('namgimeopsi.inventory.v2')),
     readQueue: () => JSON.parse(durable.get('namgimeopsi.inventory.sync-queue.v1')),
@@ -272,4 +278,112 @@ test('cleared seed date survives offline hydration, reconnect and another restar
   const restarted = createHarness(options);
   await settle();
   assert.equal(restarted.readState().items[0].recommendedUseByAt, undefined);
+});
+
+
+test('blank quantities never change inventory or enter the outbox', async () => {
+  const app = createHarness();
+  app.hook.add({ ...leftoverDraft, quantity: ' \t ' });
+  await settle();
+  assert.equal(app.controls.storageAttempts, 0);
+  assert.equal(app.controls.remoteCalls, 0);
+  app.hook.add(leftoverDraft);
+  await settle();
+  const before = app.readState();
+  const attempts = app.controls.storageAttempts;
+  app.hook.update(before.items[0].id, { ...leftoverDraft, quantity: '   ' });
+  await settle();
+  assert.deepEqual(app.readState(), before);
+  assert.equal(app.controls.storageAttempts, attempts);
+});
+
+for (const correction of ['update', 'delete', 'already-queued']) {
+  test(`persisted invalid quantity recovers with ${correction} and preserves other lots`, async () => {
+    const bad = { ...leftoverDraft, id: 'bad', quantity: '   ', reason: 'legacy', createdAt: '2026-09-01T00:00:00Z' };
+    const good = { ...bad, id: 'good', quantity: '조금 남음' };
+    const fixed = { ...bad, quantity: '반 봉지' };
+    const operations = [{ id: 'old', type: 'upsert-items', items: [bad, good] }];
+    if (correction === 'already-queued') operations.push({ id: 'fix', type: 'upsert-items', items: [fixed] });
+    const durable = new Map([
+      ['namgimeopsi.inventory.v2', JSON.stringify({ version: 2, items: [correction === 'already-queued' ? fixed : bad, good], events: [] })],
+      ['namgimeopsi.inventory.sync-queue.v1', JSON.stringify(operations)],
+    ]);
+    const remote = { version: 2, items: [], events: [] };
+    const app = createHarness({ durable, remote, hydrate: true });
+    await settle();
+    if (correction === 'update') app.hook.update('bad', { ...leftoverDraft, quantity: '반 봉지' });
+    if (correction === 'delete') app.hook.remove('bad');
+    await settle();
+    app.hook.retrySync();
+    await settle();
+    assert.deepEqual(app.readQueue(), []);
+    assert.equal(remote.items.find((item) => item.id === 'good').quantity, '조금 남음');
+    assert.equal(remote.items.find((item) => item.id === 'bad')?.quantity, correction === 'delete' ? undefined : '반 봉지');
+    const restarted = createHarness({ durable, remote, hydrate: true });
+    await settle();
+    assert.deepEqual(restarted.readQueue(), []);
+    assert.deepEqual(restarted.readState().items, JSON.parse(JSON.stringify(remote.items)));
+  });
+}
+
+
+test('quantity recovery preserves unresolved rows and receipt/cooking dependencies', () => {
+  const bad = { ...leftoverDraft, id: 'bad', quantity: ' ' };
+  const invalid = { id: 'invalid', type: 'upsert-items', items: [bad] };
+  const correction = { id: 'correction', type: 'upsert-items', items: [{ ...bad, quantity: '1모' }] };
+  assert.deepEqual(syncQueue.recoverInvalidQuantityOperations([invalid]), [invalid]);
+  for (const type of ['commit-receipt', 'commit-cooking-session', 'upsert-events']) {
+    const dependency = { id: type, type, items: [bad], events: [{ inventoryItemId: 'bad' }] };
+    const queue = [invalid, dependency, correction];
+    assert.deepEqual(syncQueue.recoverInvalidQuantityOperations(queue), queue);
+  }
+});
+
+
+for (const key of ['namgimeopsi.inventory.v2', 'namgimeopsi.inventory.v1', 'namgimeopsi.inventory.sync-queue.v1']) {
+  test(`startup retries ${key} read without overwriting unread data`, async () => {
+    const item = { ...leftoverDraft, id: 'saved', reason: 'saved', createdAt: '2026-09-01T00:00:00Z' };
+    const state = { version: 2, items: [item], events: [] };
+    const queue = [{ id: 'pending', type: 'upsert-items', items: [item] }];
+    const durable = new Map([
+      ['namgimeopsi.inventory.v2', JSON.stringify(state)],
+      ['namgimeopsi.inventory.sync-queue.v1', JSON.stringify(queue)],
+    ]);
+    const before = new Map(durable);
+    const app = createHarness({ hydrate: true, durable, failReadKey: key });
+    await settle();
+    assert.equal(app.observed[1], false);
+    assert.equal(app.observed[2], 'error');
+    app.hook.retrySync();
+    await settle();
+    assert.deepEqual(durable, before);
+    assert.equal(app.controls.storageAttempts, 0);
+    assert.equal(app.controls.remoteCalls, 0);
+    assert.equal(app.controls.reads, 6);
+    app.controls.failReadKey = null;
+    app.hook.retrySync();
+    app.hook.retrySync();
+    await settle();
+    assert.equal(app.controls.reads, 9, 'Concurrent retry taps share one hydration');
+    assert.equal(app.observed[1], true);
+    assert.equal(app.observed[2], 'synced');
+    assert.deepEqual(app.readState(), state);
+    assert.deepEqual(app.readQueue(), []);
+    assert.equal(app.controls.remoteCalls, 1);
+  });
+}
+
+test('offline hydration catches cache write failure and retries the preserved snapshot', async () => {
+  const app = createHarness({ hydrate: true, offline: true, failStorage: true, seed: [{ ...leftoverDraft, id: 'saved' }] });
+  await settle();
+  assert.equal(app.observed[1], true);
+  assert.equal(app.observed[2], 'error');
+  assert.equal(app.controls.remoteCalls, 0);
+  app.controls.failStorage = false;
+  app.controls.failRemote = false;
+  app.hook.retrySync();
+  await settle();
+  assert.equal(app.readState().items[0].id, 'saved');
+  assert.deepEqual(app.readQueue(), []);
+  assert.equal(app.observed[2], 'synced');
 });

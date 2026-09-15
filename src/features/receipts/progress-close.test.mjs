@@ -15,7 +15,7 @@ const deferred = () => {
 
 // Execute the real component and local receipt modules. Only the host UI/hooks
 // and network boundary are substituted; no device or remote data is touched.
-function harness(services) {
+function harness(services, confirm = async () => 'confirmed') {
   const slots = [];
   let cursor = 0;
   let effects = [];
@@ -74,7 +74,7 @@ function harness(services) {
     render(visible = true) {
       cursor = 0;
       effects = [];
-      const tree = ReceiptEntrySheet({ visible, onClose: () => { closed++; }, onConfirm: async () => { confirmed++; return 'confirmed'; } });
+      const tree = ReceiptEntrySheet({ visible, onClose: () => { closed++; }, onConfirm: async (draft) => { confirmed++; return confirm(draft); } });
       effects.forEach((effect) => effect());
       return tree;
     },
@@ -88,7 +88,7 @@ function nodes(tree) {
 }
 function text(tree) {
   if (Array.isArray(tree)) return tree.map(text).join('');
-  if (typeof tree === 'string') return tree;
+  if (typeof tree === 'string' || typeof tree === 'number') return String(tree);
   return tree && typeof tree === 'object' ? text(tree.props?.children) : '';
 }
 function press(tree, label) {
@@ -127,4 +127,50 @@ for (const phase of ['upload', 'analysis']) {
     assert.equal(analyzed, phase === 'upload' ? 0 : 1, 'A cancelled upload must not start analysis');
     console.log(`✓ ${phase} close ignores late ${outcome} without confirming inventory`);
   }
+}
+
+
+for (const outcome of ['confirmed', 'failed', 'throw']) {
+  const pending = deferred();
+  let submitted;
+  const app = harness({
+    pickReceiptImage: async () => ({ fileName: 'receipt.png' }),
+    uploadReceiptImage: async () => ({ id: 'test-scan' }),
+    analyzeReceiptImage: async () => ({ id: 'test-scan', status: 'ready' }),
+  }, (draft) => { submitted = structuredClone(draft); return pending.promise; });
+  await press(app.render(), '영수증으로 등록');
+  const before = app.render();
+  const confirm = nodes(before).find((node) => node.type === 'Pressable' && text(node).includes('개 냉장고에 담기'));
+  const work = confirm.props.onPress();
+  // Stale handlers from before the saving render must also be inert.
+  void confirm.props.onPress();
+  nodes(before).find((node) => node.type === 'TextInput').props.onChangeText('늦은 이름');
+  press(before, '제외');
+  const saving = app.render();
+  assert.equal(app.confirmed, 1);
+  for (const field of nodes(saving).filter((node) => node.type === 'TextInput')) assert.equal(field.props.editable, false);
+  const exclude = nodes(saving).find((node) => node.type === 'Pressable' && text(node) === '제외');
+  assert.equal(exclude.props.disabled, true);
+  const picker = nodes(saving).find((node) => typeof node.type === 'function' && node.type.name === 'StoragePicker');
+  assert.equal(picker.props.disabled, true);
+  picker.props.onChange('냉동');
+  saving.props.onRequestClose();
+  assert.equal(app.closed, 0);
+  assert.ok(text(app.render()).includes('샘플 품목 6개'));
+  if (outcome === 'throw') pending.reject(new Error('storage unavailable'));
+  else pending.resolve(outcome);
+  await work;
+  const result = app.render();
+  assert.equal(submitted.items.filter((item) => item.included).length, 6);
+  if (outcome === 'confirmed') {
+    assert.ok(text(result).includes('6개를 냉장고에 담았어요.'));
+  } else {
+    assert.ok(text(result).includes('저장하지 못했어요'));
+    const field = nodes(result).find((node) => node.type === 'TextInput');
+    assert.equal(field.props.editable, true);
+    assert.equal(field.props.value, submitted.items[0].name);
+    field.props.onChangeText('다시 수정');
+    assert.equal(nodes(app.render()).find((node) => node.type === 'TextInput').props.value, '다시 수정');
+  }
+  console.log(`✓ pending receipt locks edits and duplicate submits, then handles ${outcome}`);
 }

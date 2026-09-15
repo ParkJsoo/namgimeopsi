@@ -12,7 +12,7 @@ import {
 } from './ledger';
 import { applyDraftDates } from './dates';
 import { seedInventory } from './seed';
-import { applyPendingInventorySync, createBootstrapInventorySyncOperations, parseInventorySyncQueue, type InventorySyncOperation } from './sync-queue';
+import { applyPendingInventorySync, createBootstrapInventorySyncOperations, parseInventorySyncQueue, recoverInvalidQuantityOperations, type InventorySyncOperation } from './sync-queue';
 import { commitCookingSession, commitReceiptIntake, deleteInventoryItem, ensureInventoryUser, loadRemoteInventory, upsertInventoryEvents, upsertInventoryItems } from './supabase-store';
 import type { InventoryDraft, InventoryItem, InventoryState } from './types';
 import { confirmReceiptDraft, isReceiptDraftAlreadyConfirmed, type ReceiptConfirmationResult } from '../receipts/confirm-receipt';
@@ -61,6 +61,8 @@ export function useInventory() {
   const userRef = useRef<User | null>(null);
   const queueRef = useRef<InventorySyncOperation[]>([]);
   const isFlushingRef = useRef(false);
+  const hasLoadedCacheRef = useRef(false);
+  const retryHydrationRef = useRef<(() => Promise<void>) | null>(null);
   const writeChainRef = useRef<Promise<void>>(Promise.resolve());
 
   const setCurrentState = (nextState: InventoryState) => {
@@ -109,6 +111,11 @@ export function useInventory() {
       userRef.current = user;
 
       while (queueRef.current.length) {
+        const recovered = recoverInvalidQuantityOperations(queueRef.current);
+        if (JSON.stringify(recovered) !== JSON.stringify(queueRef.current)) {
+          queueRef.current = recovered;
+          await persist(stateRef.current, recovered);
+        }
         const operation = queueRef.current[0];
         if (!operation) break;
         await executeSyncOperation(user, operation);
@@ -135,58 +142,73 @@ export function useInventory() {
 
   useEffect(() => {
     let isMounted = true;
+    let isHydrating = false;
     async function hydrate() {
-      const [saved, legacySaved, savedQueue] = await Promise.all([
-        AsyncStorage.getItem(storageKey),
-        AsyncStorage.getItem(legacyStorageKey),
-        AsyncStorage.getItem(syncQueueKey),
-      ]);
-      const parsed = parseInventoryState(parseStoredJson(saved ?? legacySaved));
-      const localState = parsed ?? { version: 2, items: seedInventory, events: [] };
-      const savedOperations = parseInventorySyncQueue(parseStoredJson(savedQueue));
-
-      // 원격 요청보다 로컬 cache를 먼저 기준으로 잡아, 요청 실패가 기존 재고를 지우지 못하게 한다.
-      stateRef.current = localState;
-      queueRef.current = savedOperations;
-      if (isMounted) setState(localState);
-
+      if (isHydrating || !isMounted) return;
+      isHydrating = true;
+      setSyncStatus('syncing');
       try {
-        const user = await ensureInventoryUser();
-        userRef.current = user;
-        const remoteState = await loadRemoteInventory();
-        const remoteHasData = remoteState.items.length > 0 || remoteState.events.length > 0;
-        const nextState = remoteHasData ? applyPendingInventorySync(remoteState, savedOperations) : localState;
-        const nextQueue = savedOperations.length || remoteHasData
-          ? savedOperations
-          : createBootstrapInventorySyncOperations(localState);
+        // Do not write, bootstrap or contact the server until every cache read succeeds.
+        const [saved, legacySaved, savedQueue] = await Promise.all([
+          AsyncStorage.getItem(storageKey),
+          AsyncStorage.getItem(legacyStorageKey),
+          AsyncStorage.getItem(syncQueueKey),
+        ]);
+        if (!isMounted) return;
+        const parsed = parseInventoryState(parseStoredJson(saved ?? legacySaved));
+        const localState = parsed ?? { version: 2, items: seedInventory, events: [] };
+        const savedOperations = recoverInvalidQuantityOperations(parseInventorySyncQueue(parseStoredJson(savedQueue)));
+        hasLoadedCacheRef.current = true;
+        stateRef.current = localState;
+        queueRef.current = savedOperations;
+        setState(localState);
 
+        let nextState = localState;
+        let nextQueue = savedOperations.length ? savedOperations : createBootstrapInventorySyncOperations(localState);
+        let isOffline = false;
+        try {
+          const user = await ensureInventoryUser();
+          if (!isMounted) return;
+          userRef.current = user;
+          const remoteState = await loadRemoteInventory();
+          const remoteHasData = remoteState.items.length > 0 || remoteState.events.length > 0;
+          nextState = remoteHasData ? applyPendingInventorySync(remoteState, savedOperations) : localState;
+          nextQueue = savedOperations.length || remoteHasData ? savedOperations : nextQueue;
+        } catch {
+          isOffline = true;
+        }
+        if (!isMounted) return;
         stateRef.current = nextState;
         queueRef.current = nextQueue;
+        setState(nextState);
         await persist(nextState, nextQueue);
-        if (isMounted) setState(nextState);
-        void flushSyncQueue();
+        if (!isMounted) return;
+        if (isOffline) setSyncStatus('offline');
+        else void flushSyncQueue();
       } catch {
-        const nextQueue = savedOperations.length ? savedOperations : createBootstrapInventorySyncOperations(localState);
-        queueRef.current = nextQueue;
-        void persist(localState, nextQueue);
-        if (isMounted) setSyncStatus('offline');
+        if (isMounted) setSyncStatus('error');
       } finally {
-        if (isMounted) setIsReady(true);
+        isHydrating = false;
+        // A read failure stays on the retry screen; a write failure retains the loaded snapshot.
+        if (isMounted && hasLoadedCacheRef.current) setIsReady(true);
       }
     }
+    retryHydrationRef.current = hydrate;
     void hydrate();
-    return () => { isMounted = false; };
-    // outbox와 flush 함수는 ref를 통해 최신 값만 읽으므로 hydrate는 마운트 시 한 번만 시작한다.
+    return () => { isMounted = false; retryHydrationRef.current = null; };
+    // outbox와 flush 함수는 ref를 통해 최신 값만 읽는다. 읽기 실패는 같은 hydrate로 재시도한다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const add = (draft: InventoryDraft) => {
+    if (!draft.name.trim() || !draft.quantity.trim()) return;
     const item = createItem(draft);
     const nextState = { ...stateRef.current, items: [item, ...stateRef.current.items] };
     void queueLocalChange(nextState, { id: createOperationId('upsert-items'), type: 'upsert-items', items: [item] }).catch(() => setSyncStatus('error'));
   };
 
   const update = (id: string, draft: InventoryDraft) => {
+    if (!draft.name.trim() || !draft.quantity.trim()) return;
     let changedItem: InventoryItem | undefined;
     const items = stateRef.current.items.map((item) => {
       if (item.id !== id) return item;
@@ -273,6 +295,10 @@ export function useInventory() {
   };
 
   const retrySync = () => {
+    if (!hasLoadedCacheRef.current && retryHydrationRef.current) {
+      void retryHydrationRef.current();
+      return;
+    }
     // A failed local write leaves optimistic state and its outbox in memory.
     // Retry that snapshot before sending anything or reporting an empty queue.
     void persist(stateRef.current, queueRef.current)
