@@ -149,14 +149,6 @@ npm run android -- --device
 
 앱 식별자는 두 플랫폼 모두 `com.parkjsoo.namgimeopsi`입니다. 네이티브 프로젝트는 Expo가 생성하며 `ios/`, `android/`는 Git에서 제외합니다. JS 수정은 실행 중인 Metro로 반영되지만 네이티브 설정 변경은 재빌드해야 합니다. 이 Debug 실행은 Metro가 필요한 개발 환경이며, 독립 실행 가능한 preview build와 구분합니다.
 
-## 다음 단계
-
-- Android·iOS 핵심 QA와 로컬 Release 독립 실행은 확인했습니다. 최신 날짜 수정은 전용 iOS 시뮬레이터에서 검증했으며, 추가 실기기 경계 QA는 후속입니다. [Android](docs/10-android-preview.md)·[iOS](docs/11-ios-preview.md) 설치 이력을 참고하세요.
-- README에 공개한 120초 데모를 바탕으로, 모바일 시청 비중에 따라 핵심 장면 확대·짧은 소개본 검토
-- 사용성 테스트로 검수 편집 비용과 추천 근거 다듬기
-
-실제 OCR, 바코드 DB, 가족 공유, 자유형 AI 요리 챗, 영양·알레르기 분석은 이 MVP의 범위 밖입니다.
-
 ## 더 읽기
 
 - [현재 상태와 인계](docs/00-current-context.md)
