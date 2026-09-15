@@ -229,6 +229,17 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.app}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {syncStatus !== 'synced' ? (
+            <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
+              <Text accessibilityRole={syncStatus === 'error' ? 'alert' : undefined} style={styles.syncNoticeText}>
+                {syncStatus === 'error'
+                  ? '저장 또는 동기화하지 못했어요. 탭해서 다시 시도해 주세요.'
+                  : syncStatus === 'offline'
+                    ? '오프라인으로 저장했어요. 연결되면 동기화해요.'
+                    : '재고를 안전하게 동기화하고 있어요.'}
+              </Text>
+            </Pressable>
+          ) : null}
           {activeTab === 'home' ? (
             <>
               <View style={styles.header}>
@@ -238,17 +249,7 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              {syncStatus !== 'synced' ? (
-                <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
-                  <Text style={styles.syncNoticeText}>
-                    {syncStatus === 'error'
-                      ? '동기화하지 못했어요. 탭해서 다시 시도해 주세요.'
-                      : syncStatus === 'offline'
-                        ? '오프라인으로 저장했어요. 연결되면 동기화해요.'
-                        : '재고를 안전하게 동기화하고 있어요.'}
-                  </Text>
-                </Pressable>
-              ) : null}
+
 
               <View style={styles.priorityCard}>
                 <Text style={styles.priorityHeading}>먼저 확인할 재고</Text>
