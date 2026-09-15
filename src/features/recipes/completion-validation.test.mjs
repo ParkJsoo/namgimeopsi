@@ -4,6 +4,9 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import ts from 'typescript';
+import * as dates from '../inventory/dates.ts';
+import * as lots from './inventory-lots.ts';
+import { getLiveRecipeRecommendations } from './recommendations.ts';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const element = (type, props) => ({ type, props });
@@ -14,11 +17,15 @@ function harness(items = [
   { id: 'tofu', name: '두부', quantity: '1모' },
   { id: 'zucchini', name: '애호박', quantity: '1개' },
 ]) {
+  items = items.map((item) => ({ storage: '냉장', createdAt: '2026-09-01T00:00:00Z', ...item }));
   const slots = [];
   let cursor = 0;
   let confirmations = 0;
+  let visible = true;
   let state = { version: 2, items, events: [] };
   const mocks = {
+    '../inventory/dates': dates,
+    './inventory-lots': lots,
     react: {
       useState(initial) {
         const index = cursor++;
@@ -49,15 +56,18 @@ function harness(items = [
   return {
     get state() { return state; },
     get confirmations() { return confirmations; },
+    reopen() { visible = true; },
     render() {
       cursor = 0;
       return RecipeCompletionSheet({
-        recommendation: { recipe: { id: 'test-recipe', title: '애호박 두부덮밥' } },
-        consumedItems: items,
-        onClose() {},
+        recommendation: visible ? { recipe: { id: 'test-recipe', title: '애호박 두부덮밥' } } : null,
+        consumedItems: visible ? state.items.filter((item) => !state.events.some((event) => event.inventoryItemId === item.id && event.type === 'consume-all')) : [],
+        referenceDate: '2026-09-14',
+        onClose() { visible = false; },
         onConfirm(consumptions) {
           confirmations++;
-          state = completeCookingSession(state, consumptions, { sessionId: 'test-session', occurredAt: '2026-09-08T00:00:00Z' });
+          state = completeCookingSession(state, consumptions, { sessionId: `test-session-${confirmations}`, occurredAt: '2026-09-08T00:00:00Z' });
+          visible = false;
         },
       });
     },
@@ -130,3 +140,81 @@ console.log('✓ Keeping one lot unchanged still permits consumption of another 
   assert.equal(app.state.events.length, 0);
 }
 console.log('✓ Whitespace-only differences do not enable an unchanged single-lot session');
+
+
+const duplicateLots = [
+  { id: 'new-tofu', name: '두부', quantity: '1모', storage: '냉동', recommendedUseByAt: '2026-09-20', createdAt: '2026-09-14T00:00:00Z' },
+  { id: 'old-tofu', name: '두부', quantity: '1모', storage: '냉장', recommendedUseByAt: '2026-09-13', createdAt: '2026-09-01T00:00:00Z' },
+];
+{
+  const candidates = lots.getCookingCandidates(duplicateLots, ['두부', ' 두부 '], '2026-09-14');
+  assert.deepEqual(candidates.map((i) => i.id), ['old-tofu', 'new-tofu']);
+  assert(getLiveRecipeRecommendations(duplicateLots, '2026-09-14')[0].reason.includes('기준 날짜가 지났어요'));
+  const app = harness(candidates);
+  const tree = app.render();
+  const radios = nodes(tree).filter((node) => node.props?.accessibilityRole === 'radio');
+  assert.equal(radios.length, 2);
+  assert.equal(radios[0].props.accessibilityState.checked, true);
+  assert(radios[0].props.accessibilityLabel.includes('냉장'));
+  assert(radios[0].props.accessibilityLabel.includes('2026-09-13'));
+  button(tree, '재료 사용 완료').props.onPress();
+  assert.deepEqual(app.state.events.map((e) => e.inventoryItemId), ['old-tofu']);
+}
+console.log('✓ The recommended urgent lot is the default completion target, independent of inventory order');
+{
+  const app = harness(duplicateLots);
+  const newer = nodes(app.render()).find((node) => node.props?.accessibilityRole === 'radio' && node.props.accessibilityLabel.includes('2026-09-20'));
+  newer.props.onPress();
+  remaining(app, '반 모');
+  button(app.render(), '재료 사용 완료').props.onPress();
+  assert.deepEqual(app.state.events.map((e) => [e.inventoryItemId, e.type]), [['new-tofu', 'consume']]);
+  assert.equal(app.state.items.find((i) => i.id === 'new-tofu').quantity, '반 모');
+  assert.equal(app.state.items.find((i) => i.id === 'old-tofu').quantity, '1모');
+}
+console.log('✓ Choosing another lot updates only its quantity and ledger');
+{
+  const app = harness(duplicateLots);
+  nodes(app.render()).find((node) => node.props?.accessibilityRole === 'radio' && node.props.accessibilityLabel.includes('2026-09-20')).props.onPress();
+  remaining(app, '');
+  assert.equal(button(app.render(), '재료 사용 완료').props.disabled, true);
+  button(app.render(), '아직 있어요').props.onPress();
+  assert.equal(app.state.events.length, 0);
+  assert.equal(app.render().props.visible, false);
+  app.reopen();
+  const radios = nodes(app.render()).filter((node) => node.props?.accessibilityRole === 'radio');
+  assert.equal(radios[0].props.accessibilityState.checked, true);
+  assert.equal(button(app.render(), '재료 사용 완료').props.disabled, false);
+}
+console.log('✓ Cancel leaves all lots unchanged and resets selection and invalid draft');
+
+for (const renderWhileHidden of [true, false]) {
+  const app = harness([{ id: 'tofu', name: '두부', quantity: '1모' }]);
+  remaining(app, '반 모');
+  button(app.render(), '재료 사용 완료').props.onPress();
+  assert.equal(app.state.items[0].quantity, '반 모');
+  if (renderWhileHidden) assert.equal(app.render().props.visible, false);
+  app.reopen();
+  button(app.render(), '남은 양').props.onPress();
+  let tree = app.render();
+  assert.equal(nodes(tree).find((node) => node.type === 'TextInput').props.value, '반 모');
+  assert.equal(button(tree, '재료 사용 완료').props.disabled, true);
+  button(tree, '재료 사용 완료').props.onPress();
+  assert.equal(app.state.events.length, 1);
+  assert.equal(app.state.items[0].quantity, '반 모');
+
+  // Cancel a changed draft and reopen against the current inventory again.
+  nodes(tree).find((node) => node.type === 'TextInput').props.onChangeText('조금 남음');
+  button(app.render(), '아직 있어요').props.onPress();
+  if (renderWhileHidden) assert.equal(app.render().props.visible, false);
+  app.reopen();
+  button(app.render(), '남은 양').props.onPress();
+  tree = app.render();
+  assert.equal(nodes(tree).find((node) => node.type === 'TextInput').props.value, '반 모');
+  assert.equal(button(tree, '재료 사용 완료').props.disabled, true);
+
+  nodes(tree).find((node) => node.type === 'TextInput').props.onChangeText('조금 남음');
+  button(app.render(), '재료 사용 완료').props.onPress();
+  assert.equal(app.state.items[0].quantity, '조금 남음');
+  assert.deepEqual(app.state.events.map((event) => event.remainingQuantityLabel), ['반 모', '조금 남음']);
+}
+console.log('✓ Reopening after partial consumption uses current quantity, blocks unchanged saves and clears cancelled drafts, with or without a hidden render');

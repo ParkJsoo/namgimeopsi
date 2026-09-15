@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  AppState,
   Modal,
   Pressable,
   ScrollView,
@@ -13,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardSheet } from '@/components/KeyboardSheet';
 import type { RecipeRecommendation } from '@/features/domain/recipe-ranking';
+import { getCookingCandidates } from '@/features/recipes/inventory-lots';
+import { compareInventoryDates, dateAfterDays, getDateLabel, isIsoDate, isValidDateInput, localDate } from '@/features/inventory/dates';
 import { useInventory } from '@/features/inventory/use-inventory';
 import {
   blankDraft,
@@ -27,13 +30,10 @@ import { RecipeCompletionSheet } from '@/features/recipes/RecipeCompletionSheet'
 import { getLiveRecipeRecommendations } from '@/features/recipes/recommendations';
 import { ReceiptEntrySheet } from '@/features/receipts/ReceiptEntrySheet';
 
-function normalizeFoodName(name: string) {
-  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
-}
 
-function statusTone(item: InventoryItem) {
-  if (getFoodStatus(item) === 'today') return styles.statusToday;
-  if (getFoodStatus(item) === 'soon') return styles.statusSoon;
+function statusTone(item: InventoryItem, referenceDate: string) {
+  if (['overdue', 'today', 'unknown'].includes(getFoodStatus(item, referenceDate))) return styles.statusToday;
+  if (getFoodStatus(item, referenceDate) === 'soon') return styles.statusSoon;
   return styles.statusRelaxed;
 }
 
@@ -87,6 +87,20 @@ function KindPicker({
 }
 
 export default function HomeScreen() {
+  const [referenceDate, setReferenceDate] = useState(() => localDate());
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = () => {
+      clearTimeout(timer);
+      setReferenceDate(localDate());
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      timer = setTimeout(refresh, midnight.getTime() - now.getTime() + 50);
+    };
+    refresh();
+    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); });
+    return () => { clearTimeout(timer); subscription.remove(); };
+  }, []);
   const [activeTab, setActiveTab] = useState<'home' | 'inventory'>('home');
   const { items: inventory, isReady, syncStatus, add, update, remove, completeCookingSession, confirmReceipt, retrySync } = useInventory();
   const [editorOpen, setEditorOpen] = useState(false);
@@ -98,30 +112,29 @@ export default function HomeScreen() {
   const [inventoryFilter, setInventoryFilter] = useState<'all' | 'leftover' | 'today'>('all');
 
   const priorityItems = useMemo(
-    () => inventory.filter((item) => getFoodStatus(item) !== 'relaxed').slice(0, 3),
-    [inventory],
+    () => inventory.filter((item) => ['overdue', 'today', 'soon'].includes(getFoodStatus(item, referenceDate)))
+      .sort((a, b) => compareInventoryDates(a, b, referenceDate)).slice(0, 3),
+    [inventory, referenceDate],
   );
   const featuredPriority = priorityItems[0];
 
-  const recommendations = useMemo(() => getLiveRecipeRecommendations(inventory), [inventory]);
+  const recommendations = useMemo(() => getLiveRecipeRecommendations(inventory, referenceDate), [inventory, referenceDate]);
 
   const pendingConsumedItems = useMemo(() => {
     if (!pendingRecommendation) return [];
     const consumptionFoodNames = pendingRecommendation.recipe.consumptionFoodNames ?? pendingRecommendation.availableIngredients;
-    return consumptionFoodNames
-      .map((foodName) => inventory.find((item) => normalizeFoodName(item.name) === normalizeFoodName(foodName)))
-      .filter((item): item is InventoryItem => item !== undefined);
-  }, [inventory, pendingRecommendation]);
+    return getCookingCandidates(inventory, consumptionFoodNames, referenceDate);
+  }, [inventory, pendingRecommendation, referenceDate]);
 
   const visibleInventory = useMemo(
     () =>
       inventory.filter((item) => {
         if (item.storage !== selectedStorage) return false;
         if (inventoryFilter === 'leftover') return item.kind === 'leftover';
-        if (inventoryFilter === 'today') return getFoodStatus(item) === 'today';
+        if (inventoryFilter === 'today') return getFoodStatus(item, referenceDate) === 'today';
         return true;
-      }),
-    [inventory, inventoryFilter, selectedStorage],
+      }).sort((a, b) => compareInventoryDates(a, b, referenceDate)),
+    [inventory, inventoryFilter, selectedStorage, referenceDate],
   );
 
   const openCreate = (kind: InventoryDraft['kind'] = 'ingredient') => {
@@ -130,7 +143,7 @@ export default function HomeScreen() {
       ...blankDraft,
       kind,
       storage: kind === 'leftover' ? '냉장' : blankDraft.storage,
-      recommendedUseBy: kind === 'leftover' ? '내일까지' : blankDraft.recommendedUseBy,
+      recommendedUseBy: kind === 'leftover' ? dateAfterDays(1) : '',
     });
     setEditorOpen(true);
   };
@@ -141,7 +154,7 @@ export default function HomeScreen() {
       name: item.name,
       quantity: item.quantity,
       storage: item.storage,
-      recommendedUseBy: item.recommendedUseBy,
+      recommendedUseBy: isIsoDate(item.recommendedUseByAt) ? item.recommendedUseByAt : '',
       kind: item.kind,
     });
     setEditorOpen(true);
@@ -158,6 +171,10 @@ export default function HomeScreen() {
       return;
     }
 
+    if (!isValidDateInput(draft.recommendedUseBy)) {
+      Alert.alert('실제 날짜를 YYYY-MM-DD로 입력해 주세요.');
+      return;
+    }
     if (editingId) {
       update(editingId, draft);
     } else {
@@ -204,7 +221,7 @@ export default function HomeScreen() {
               <View style={styles.header}>
                 <View>
                   <Text style={styles.eyebrow}>안녕하세요, 윤서님</Text>
-                  <Text style={styles.title}>오늘 먼저 먹을 게 있어요</Text>
+                  <Text style={styles.title}>{featuredPriority ? '오늘 먼저 확인할 게 있어요' : '내 재고를 확인해 보세요'}</Text>
                 </View>
               </View>
 
@@ -221,7 +238,7 @@ export default function HomeScreen() {
               ) : null}
 
               <View style={styles.priorityCard}>
-                <Text style={styles.priorityHeading}>오늘 먼저 먹으면 좋은 것</Text>
+                <Text style={styles.priorityHeading}>먼저 확인할 재고</Text>
                 {featuredPriority ? (
                   <Pressable
                     accessibilityRole="button"
@@ -229,7 +246,7 @@ export default function HomeScreen() {
                     style={styles.priorityRow}>
                     <View style={styles.priorityCopy}>
                       <Text style={styles.foodName}>{featuredPriority.name}</Text>
-                      <Text style={styles.reason}>{featuredPriority.reason}</Text>
+                      <Text style={styles.reason}>{getDateLabel(featuredPriority, referenceDate)} · 상태를 확인해 주세요.</Text>
                     </View>
                   </Pressable>
                 ) : (
@@ -261,7 +278,7 @@ export default function HomeScreen() {
               <View style={styles.inventoryHeader}>
                 <View>
                   <Text style={styles.eyebrow}>내 냉장고</Text>
-                  <Text style={styles.title}>먼저 먹기 순서예요</Text>
+                  <Text style={styles.title}>먼저 확인할 순서예요</Text>
                 </View>
                 <Pressable accessibilityRole="button" onPress={() => openCreate('ingredient')} style={styles.addSmallButton}>
                   <Text style={styles.addSmallButtonText}>직접 추가</Text>
@@ -290,8 +307,8 @@ export default function HomeScreen() {
                         <Text style={styles.foodName}>{item.name}</Text>
                         <Text style={styles.inventoryMeta}>{item.quantity} · {getDateDescription(item)}</Text>
                       </View>
-                      <View style={[styles.statusChip, statusTone(item)]}>
-                        <Text style={styles.statusText}>{item.recommendedUseBy} 권장</Text>
+                      <View style={[styles.statusChip, statusTone(item, referenceDate)]}>
+                        <Text style={styles.statusText}>{getDateLabel(item, referenceDate).replace(' · ', '\n')}</Text>
                       </View>
                     </Pressable>
                 ))}
@@ -330,7 +347,7 @@ export default function HomeScreen() {
                 ...current,
                 kind,
                 storage: kind === 'leftover' ? '냉장' : current.storage,
-                recommendedUseBy: kind === 'leftover' ? '내일까지' : current.recommendedUseBy,
+                recommendedUseBy: kind === 'leftover' && !current.recommendedUseBy ? dateAfterDays(1) : current.recommendedUseBy,
               }))
             }
           />
@@ -352,19 +369,30 @@ export default function HomeScreen() {
           />
           <Text style={styles.fieldLabel}>보관 위치</Text>
           <StoragePicker value={draft.storage} onChange={(storage) => setDraft((current) => ({ ...current, storage }))} />
-          <Text style={styles.fieldLabel}>권장 섭취 시점</Text>
+          <Text style={styles.fieldLabel}>권장 섭취일 (YYYY-MM-DD, 선택)</Text>
+          <View style={styles.optionRow}>
+            {([['오늘', 0], ['내일', 1]] as const).map(([label, days]) => (
+              <Pressable accessibilityRole="button" key={label} style={styles.option}
+                onPress={() => setDraft((current) => ({ ...current, recommendedUseBy: dateAfterDays(days) }))}>
+                <Text style={styles.optionText}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
           <TextInput
             accessibilityLabel="권장 섭취 시점"
+            placeholder="예: 2026-09-20 · 비워 두면 미지정"
+            autoCorrect={false}
             value={draft.recommendedUseBy}
             onChangeText={(recommendedUseBy) => setDraft((current) => ({ ...current, recommendedUseBy }))}
             style={styles.input}
           />
+          {!isValidDateInput(draft.recommendedUseBy) ? <Text accessibilityRole="alert" style={styles.safetyNote}>실제 날짜를 YYYY-MM-DD로 입력해 주세요.</Text> : null}
           <Text style={styles.safetyNote}>
             {draft.kind === 'leftover'
-              ? '조리·보관 시작은 지금으로 기록돼요. 이는 식품 안전을 보장하는 날짜가 아니에요.'
+              ? editingId ? '보관 시작일은 유지해요. 권장 섭취일은 식품 안전을 보장하지 않아요.' : '보관 시작 시각을 기록해요. 권장 섭취일은 식품 안전을 보장하지 않아요.'
               : '포장 표기일과 별도로, 사용자가 정할 수 있는 권장 섭취 시점이에요.'}
           </Text>
-          <Pressable accessibilityRole="button" onPress={saveItem} style={styles.primaryButton}>
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isValidDateInput(draft.recommendedUseBy) }} disabled={!isValidDateInput(draft.recommendedUseBy)} onPress={saveItem} style={[styles.primaryButton, !isValidDateInput(draft.recommendedUseBy) && { opacity: 0.5 }]}>
             <Text style={styles.primaryButtonText}>{editingId ? '수정 완료' : '냉장고에 담기'}</Text>
           </Pressable>
           {editingId ? (
@@ -381,6 +409,7 @@ export default function HomeScreen() {
       <RecipeCompletionSheet
         recommendation={pendingRecommendation}
         consumedItems={pendingConsumedItems}
+        referenceDate={referenceDate}
         onConfirm={(consumptions) => {
           if (!pendingRecommendation || !pendingConsumedItems.length) return;
           const didComplete = completeCookingSession(consumptions, {
@@ -447,9 +476,9 @@ const styles = StyleSheet.create({
   filterTextSelected: { color: '#2F6B4F' },
   inventoryList: { marginTop: 16, borderRadius: 20, backgroundColor: '#FFFFFF', overflow: 'hidden' },
   inventoryRow: { padding: 16, minHeight: 76, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E9E6DF' },
-  inventoryCopy: { flex: 1 },
+  inventoryCopy: { flex: 1, paddingRight: 8 },
   inventoryMeta: { marginTop: 2, color: '#6C7168', fontSize: 13, lineHeight: 18 },
-  statusChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  statusChip: { maxWidth: 135, flexShrink: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   statusToday: { backgroundColor: '#FFF0DC' },
   statusSoon: { backgroundColor: '#E4F0E7' },
   statusRelaxed: { backgroundColor: '#F1EEE7' },

@@ -1,5 +1,7 @@
 # 기능별 PR 통합 계획 — 2026-09-08
 
+**통합 완료:** PR #1~#5는 순차 merge commit으로 병합했고 최종 main `14a7977`의 tree가 당시 최종 feature와 일치함을 확인했다. 이후 Android QA 기록 [PR #6](https://github.com/ParkJsoo/namgimeopsi/pull/6)도 병합해 main은 `f622dc7`이 됐다. 아래는 완료한 통합의 계획·검증 기준 이력이며, 다음 작업은 `docs/13-demo-production-plan.md`를 따른다.
+
 사용자가 iPhone QA·전문 에이전트 리뷰 이후 push와 병합을 논의하고, 계획과 PR 구분을 요청했다. 원격 main `83254f7`에는 아직 앱 구현이 없으므로 전체 63개 후속 커밋을 의존성 순서에 따라 5개 PR로 나눈다. 통합 계획 문서 커밋은 마지막 PR에 포함한다.
 
 ## PR 경계

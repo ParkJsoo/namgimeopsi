@@ -23,12 +23,22 @@ function parseIsoDate(value: string): Date {
   return parsed;
 }
 
+export function isIsoDate(value: string | undefined): value is string {
+  if (!value) return false;
+  try { parseIsoDate(value); return true; } catch { return false; }
+}
+
+/** Device-local calendar day, independent of UTC midnight. */
+export function localDate(value = new Date()) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+}
+
 function toIsoDate(value: Date | string) {
   if (typeof value === 'string') {
     parseIsoDate(value);
     return value;
   }
-  return value.toISOString().slice(0, 10);
+  return localDate(value);
 }
 
 /** 권장 섭취 시점이 있으면 우선하고, 없을 때만 포장 표기일을 보조 기준으로 사용한다. */

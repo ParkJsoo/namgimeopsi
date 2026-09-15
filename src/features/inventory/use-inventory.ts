@@ -6,11 +6,11 @@ import {
   completeCookingSession as completeCookingSessionState,
   completeInventoryItems,
   getActiveInventoryItems,
-  mergeMissingRecommendationDates,
   parseInventoryState,
   type CompletionContext,
   type CookingConsumption,
 } from './ledger';
+import { applyDraftDates } from './dates';
 import { seedInventory } from './seed';
 import { applyPendingInventorySync, createBootstrapInventorySyncOperations, parseInventorySyncQueue, type InventorySyncOperation } from './sync-queue';
 import { commitCookingSession, commitReceiptIntake, deleteInventoryItem, ensureInventoryUser, loadRemoteInventory, upsertInventoryEvents, upsertInventoryItems } from './supabase-store';
@@ -47,7 +47,7 @@ function createItem(draft: InventoryDraft): InventoryItem {
     ...draft,
     name: draft.name.trim(),
     reason: isLeftover ? '방금 보관을 시작한 남은 음식이에요.' : '직접 추가한 재고예요.',
-    storageStartedAt: isLeftover ? '지금' : undefined,
+    ...applyDraftDates(draft),
     createdAt: new Date().toISOString(),
   };
 }
@@ -142,7 +142,7 @@ export function useInventory() {
         AsyncStorage.getItem(syncQueueKey),
       ]);
       const parsed = parseInventoryState(parseStoredJson(saved ?? legacySaved));
-      const localState = mergeMissingRecommendationDates(parsed ?? { version: 2, items: seedInventory, events: [] }, seedInventory);
+      const localState = parsed ?? { version: 2, items: seedInventory, events: [] };
       const savedOperations = parseInventorySyncQueue(parseStoredJson(savedQueue));
 
       // 원격 요청보다 로컬 cache를 먼저 기준으로 잡아, 요청 실패가 기존 재고를 지우지 못하게 한다.
@@ -195,7 +195,7 @@ export function useInventory() {
         ...draft,
         name: draft.name.trim(),
         reason: '직접 수정한 재고예요.',
-        storageStartedAt: draft.kind === 'leftover' ? item.storageStartedAt ?? '지금' : undefined,
+        ...applyDraftDates(draft, item),
       };
       return changedItem;
     });
