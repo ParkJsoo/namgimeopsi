@@ -249,8 +249,6 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-
-
               <View style={styles.priorityCard}>
                 <Text style={styles.priorityHeading}>먼저 확인할 재고</Text>
                 {featuredPriority ? (
@@ -270,7 +268,6 @@ export default function HomeScreen() {
 
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>오늘의 한 끼</Text>
-                <Text style={styles.link}>모두 보기</Text>
               </View>
               {recommendations.length ? (
                 recommendations.map((recommendation) => (
@@ -475,7 +472,6 @@ const styles = StyleSheet.create({
   reason: { marginTop: 2, fontSize: 12, lineHeight: 17, color: '#6C7168' },
   priorityEmpty: { paddingTop: 16, color: '#6C7168', fontSize: 14, lineHeight: 21 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 12 },
-  link: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: '#2F6B4F' },
   recipeEmpty: { borderRadius: 20, borderWidth: 1, borderStyle: 'dashed', borderColor: '#D5E0D6', padding: 20 },
   recipeEmptyTitle: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: '#1D211C' },
   recipeEmptyCopy: { marginTop: 6, fontSize: 13, lineHeight: 19, color: '#6C7168' },
