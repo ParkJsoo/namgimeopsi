@@ -1,6 +1,6 @@
 # 2분 데모와 케이스 스터디
 
-상태: **전체 리허설·날짜 후속 수정·120초 본촬영 편집 완료 / 외부 공개 미완료**. [제작 결과](17-demo-production-result.md). 최신 구현은 `fix/inventory-calendar-dates`다. 실기기 설치는 과거 버전이며 새 수정은 전용 시뮬레이터 Release에만 설치했다. 수정 검증과 현재 위치는 [인계](00-current-context.md)를 따른다.
+상태: **전체 리허설·날짜 후속 수정·120초 편집·사용자 영상 확인·GitHub 공개 완료**. [공개 영상](https://github.com/user-attachments/assets/cdec4e42-c54b-443c-969c-5452c6ed7d70) · [제작 결과](17-demo-production-result.md). 날짜·조리 차감 수정은 PR #7로 main에 병합했다. 실기기 설치는 과거 버전이며 수정 검증과 현재 위치는 [인계](00-current-context.md)를 따른다.
 
 ## 제작 계획과 현재 진행 지점
 
@@ -82,11 +82,11 @@
 - [x] 리허설: 실제 추천 메뉴·lot 수·촬영일·실행 환경 기록
 - [x] 원본 녹화 및 120초 편집, fixture 고지와 전후 수량 가독성 확인
 - [x] README에 로컬 제작 완료·대표 이미지·제작 결과 연결
-- [ ] 외부 공개 영상 링크 연결
+- [x] GitHub 첨부 영상 공개·README 링크 연결
 - [x] Android 주요 QA 및 로컬 preview 식별자 기록
 - [x] iPhone 핵심 QA·iOS preview 식별자 기록
 
-120초 로컬 데모 영상은 제작됐고 외부 공개 링크는 아직 없다. iOS 시뮬레이터·OCR fixture 고지를 유지하며, 실기기 preview 검증은 별도 근거다. 로컬 Release 검증을 스토어 배포로 표현하지 않는다.
+120초 P3 개선본을 GitHub 첨부 자산으로 공개했다. iOS 시뮬레이터·OCR fixture 고지를 유지하며, 실기기 preview 검증은 별도 근거다. 로컬 Release 검증을 스토어 배포로 표현하지 않는다.
 
 
 ### 2026-09-09 대본 보정 기준

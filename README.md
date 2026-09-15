@@ -1,14 +1,26 @@
 # 남김없이
 
-> **장을 본 날의 기록을, 오늘 먹을 한 끼의 결정으로 바꾸는 앱.**<br />
+> **남은 재료로 오늘의 한 끼를 정하고, 먹은 뒤 남은 양까지 기록합니다.**<br />
 > 1~2인 가구가 남은 음식과 임박 재료를 잊기 전에 쓰도록 돕는 모바일 포트폴리오 프로젝트입니다.
 
-<p align="center">
-  <img src="docs/qa-artifacts/production/poster.png" width="960" alt="남김없이 데모 — 기준 날짜 경과와 사용 전 상태 확인을 설명하는 메뉴 추천" />
-</p>
+## 2분 데모
 
-120초 한국어 자막 데모를 전용 iOS 시뮬레이터에서 촬영·편집했습니다. 영상은 현재 로컬 산출물이며 외부 공개 링크는 아직 없습니다. [제작 결과와 검증 범위](docs/17-demo-production-result.md)를 확인하세요. 영수증 분석은 실제 OCR이 아닌 고정 fixture입니다.
+영수증 초안을 검수하고, 남은 카레를 등록한 뒤, 메뉴를 골라 두부는 반 모를 남기고 애호박은 다 쓰는 실제 앱 흐름입니다.
 
+https://github.com/user-attachments/assets/cdec4e42-c54b-443c-969c-5452c6ed7d70
+
+**iOS 시뮬레이터 · 영수증 분석은 고정 OCR 샘플(fixture) · 120초 · 한국어 설명 · 무음**
+
+작은 화면에서는 전체 화면으로 재생하거나 아래 이미지를 눌러 자세히 볼 수 있습니다. [영상 직접 열기](https://github.com/user-attachments/assets/cdec4e42-c54b-443c-969c-5452c6ed7d70)
+
+2026-09-14 촬영본의 편집 개선 버전입니다. 이후 추가한 동명 재고 선택 UI는 포함하지 않습니다. [제작·검증 기록](docs/17-demo-production-result.md) · [최신 구현·후속 검증](docs/00-current-context.md)
+
+### 데모에서 보여 주는 세 가지 결정
+
+| 1. 기록할까? | 2. 무엇을 먼저 먹을까? | 3. 얼마나 남았을까? |
+| --- | --- | --- |
+| 참기름 수량을 수정하고 돼지고기를 제외한 뒤 5개만 입고합니다. | 현재 재고·부족 재료·조리 시간과 날짜 안내를 보고 메뉴를 고릅니다. | 두부는 반 모로 남고, 다 쓴 애호박은 활성 목록에서 빠집니다. |
+| [<img src="docs/qa-artifacts/production/receipt-review.png" width="240" alt="영수증 검수: 참기름 조금 남음으로 수정, 돼지고기 제외, 5개 입고 확정 전" />](docs/qa-artifacts/production/receipt-review.png) | [<img src="docs/qa-artifacts/production/menu-recommendation.png" width="240" alt="메뉴 추천: 애호박 두부덮밥의 부족 재료 없음, 15분, 지난 날짜 상태 확인 안내" />](docs/qa-artifacts/production/menu-recommendation.png) | [<img src="docs/qa-artifacts/production/remaining-inventory.png" width="240" alt="소비 후 재고: 두부 반 모와 남은 카레 1인분, 전량 소비한 애호박은 목록에서 제외" />](docs/qa-artifacts/production/remaining-inventory.png) |
 
 ## 냉장고를 정리하는 일보다, 오늘 뭘 먹을지가 더 어렵다
 
@@ -21,13 +33,6 @@
 ```
 
 그래서 이 앱은 재고를 많이 보여 주기보다 **지금 할 행동 하나**를 먼저 보여 줍니다. 영수증은 짧게 검수하고, 남은 음식은 생활 단위로 적고, 메뉴는 이유와 함께 세 개만 제안합니다.
-
-## 데모에서 보여 주는 세 가지 결정
-
-| 1. 기록할까? | 2. 무엇을 먼저 먹을까? | 3. 얼마나 남았을까? |
-| --- | --- | --- |
-| 영수증 결과를 확인·수정·제외한 뒤에만 입고합니다. | 임박 재료와 보유 재료를 점수화해 메뉴를 최대 세 개 제안합니다. | `다 먹음` 또는 `반 모`, `조금 남음`처럼 실제 남은 양을 사용자가 확인합니다. |
-| <img src="docs/qa-artifacts/05-quick-add-sheet.png" width="190" alt="영수증, 남은 음식, 직접 추가를 고르는 빠른 추가" /> | <img src="docs/qa-artifacts/01-home-375x812.png" width="190" alt="추천 이유가 보이는 홈 메뉴 카드" /> | <img src="docs/qa-artifacts/07-live-recipe-completion-sheet.png" width="190" alt="조리 뒤 남은 양을 확인하는 완료 시트" /> |
 
 ### 1) 영수증을 믿기 전에, 사용자가 검수한다
 
@@ -147,7 +152,7 @@ npm run android -- --device
 ## 다음 단계
 
 - Android·iOS 핵심 QA와 로컬 Release 독립 실행은 확인했습니다. 최신 날짜 수정은 전용 iOS 시뮬레이터에서 검증했으며, 추가 실기기 경계 QA는 후속입니다. [Android](docs/10-android-preview.md)·[iOS](docs/11-ios-preview.md) 설치 이력을 참고하세요.
-- [완성된 120초 로컬 영상](docs/17-demo-production-result.md)의 사용자 검토 후 공개처 결정·업로드·링크 연결
+- README에 공개한 120초 데모를 바탕으로, 모바일 시청 비중에 따라 핵심 장면 확대·짧은 소개본 검토
 - 사용성 테스트로 검수 편집 비용과 추천 근거 다듬기
 
 실제 OCR, 바코드 DB, 가족 공유, 자유형 AI 요리 챗, 영양·알레르기 분석은 이 MVP의 범위 밖입니다.
