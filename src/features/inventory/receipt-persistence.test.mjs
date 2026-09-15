@@ -65,10 +65,12 @@ function createHarness(options = {}) {
       commitReceiptIntake: remoteWrite,
       upsertInventoryItems: async (_user, items) => {
         await remoteWrite();
+        if (items.some((item) => !item.quantity.trim())) throw new Error('quantity CHECK');
         const merged = new Map(remote.items.map((item) => [item.id, item]));
         items.forEach((item) => merged.set(item.id, structuredClone(item)));
         remote.items = [...merged.values()];
       },
+      deleteInventoryItem: async (id) => { await remoteWrite(); remote.items = remote.items.filter((item) => item.id !== id); },
       commitCookingSession: async (events) => {
         controls.cookingCalls.push(events);
         return remoteWrite();
@@ -272,4 +274,63 @@ test('cleared seed date survives offline hydration, reconnect and another restar
   const restarted = createHarness(options);
   await settle();
   assert.equal(restarted.readState().items[0].recommendedUseByAt, undefined);
+});
+
+
+test('blank quantities never change inventory or enter the outbox', async () => {
+  const app = createHarness();
+  app.hook.add({ ...leftoverDraft, quantity: ' \t ' });
+  await settle();
+  assert.equal(app.controls.storageAttempts, 0);
+  assert.equal(app.controls.remoteCalls, 0);
+  app.hook.add(leftoverDraft);
+  await settle();
+  const before = app.readState();
+  const attempts = app.controls.storageAttempts;
+  app.hook.update(before.items[0].id, { ...leftoverDraft, quantity: '   ' });
+  await settle();
+  assert.deepEqual(app.readState(), before);
+  assert.equal(app.controls.storageAttempts, attempts);
+});
+
+for (const correction of ['update', 'delete', 'already-queued']) {
+  test(`persisted invalid quantity recovers with ${correction} and preserves other lots`, async () => {
+    const bad = { ...leftoverDraft, id: 'bad', quantity: '   ', reason: 'legacy', createdAt: '2026-09-01T00:00:00Z' };
+    const good = { ...bad, id: 'good', quantity: '조금 남음' };
+    const fixed = { ...bad, quantity: '반 봉지' };
+    const operations = [{ id: 'old', type: 'upsert-items', items: [bad, good] }];
+    if (correction === 'already-queued') operations.push({ id: 'fix', type: 'upsert-items', items: [fixed] });
+    const durable = new Map([
+      ['namgimeopsi.inventory.v2', JSON.stringify({ version: 2, items: [correction === 'already-queued' ? fixed : bad, good], events: [] })],
+      ['namgimeopsi.inventory.sync-queue.v1', JSON.stringify(operations)],
+    ]);
+    const remote = { version: 2, items: [], events: [] };
+    const app = createHarness({ durable, remote, hydrate: true });
+    await settle();
+    if (correction === 'update') app.hook.update('bad', { ...leftoverDraft, quantity: '반 봉지' });
+    if (correction === 'delete') app.hook.remove('bad');
+    await settle();
+    app.hook.retrySync();
+    await settle();
+    assert.deepEqual(app.readQueue(), []);
+    assert.equal(remote.items.find((item) => item.id === 'good').quantity, '조금 남음');
+    assert.equal(remote.items.find((item) => item.id === 'bad')?.quantity, correction === 'delete' ? undefined : '반 봉지');
+    const restarted = createHarness({ durable, remote, hydrate: true });
+    await settle();
+    assert.deepEqual(restarted.readQueue(), []);
+    assert.deepEqual(restarted.readState().items, JSON.parse(JSON.stringify(remote.items)));
+  });
+}
+
+
+test('quantity recovery preserves unresolved rows and receipt/cooking dependencies', () => {
+  const bad = { ...leftoverDraft, id: 'bad', quantity: ' ' };
+  const invalid = { id: 'invalid', type: 'upsert-items', items: [bad] };
+  const correction = { id: 'correction', type: 'upsert-items', items: [{ ...bad, quantity: '1모' }] };
+  assert.deepEqual(syncQueue.recoverInvalidQuantityOperations([invalid]), [invalid]);
+  for (const type of ['commit-receipt', 'commit-cooking-session', 'upsert-events']) {
+    const dependency = { id: type, type, items: [bad], events: [{ inventoryItemId: 'bad' }] };
+    const queue = [invalid, dependency, correction];
+    assert.deepEqual(syncQueue.recoverInvalidQuantityOperations(queue), queue);
+  }
 });

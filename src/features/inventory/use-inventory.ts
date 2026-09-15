@@ -12,7 +12,7 @@ import {
 } from './ledger';
 import { applyDraftDates } from './dates';
 import { seedInventory } from './seed';
-import { applyPendingInventorySync, createBootstrapInventorySyncOperations, parseInventorySyncQueue, type InventorySyncOperation } from './sync-queue';
+import { applyPendingInventorySync, createBootstrapInventorySyncOperations, parseInventorySyncQueue, recoverInvalidQuantityOperations, type InventorySyncOperation } from './sync-queue';
 import { commitCookingSession, commitReceiptIntake, deleteInventoryItem, ensureInventoryUser, loadRemoteInventory, upsertInventoryEvents, upsertInventoryItems } from './supabase-store';
 import type { InventoryDraft, InventoryItem, InventoryState } from './types';
 import { confirmReceiptDraft, isReceiptDraftAlreadyConfirmed, type ReceiptConfirmationResult } from '../receipts/confirm-receipt';
@@ -109,6 +109,11 @@ export function useInventory() {
       userRef.current = user;
 
       while (queueRef.current.length) {
+        const recovered = recoverInvalidQuantityOperations(queueRef.current);
+        if (JSON.stringify(recovered) !== JSON.stringify(queueRef.current)) {
+          queueRef.current = recovered;
+          await persist(stateRef.current, recovered);
+        }
         const operation = queueRef.current[0];
         if (!operation) break;
         await executeSyncOperation(user, operation);
@@ -143,7 +148,7 @@ export function useInventory() {
       ]);
       const parsed = parseInventoryState(parseStoredJson(saved ?? legacySaved));
       const localState = parsed ?? { version: 2, items: seedInventory, events: [] };
-      const savedOperations = parseInventorySyncQueue(parseStoredJson(savedQueue));
+      const savedOperations = recoverInvalidQuantityOperations(parseInventorySyncQueue(parseStoredJson(savedQueue)));
 
       // 원격 요청보다 로컬 cache를 먼저 기준으로 잡아, 요청 실패가 기존 재고를 지우지 못하게 한다.
       stateRef.current = localState;
@@ -181,12 +186,14 @@ export function useInventory() {
   }, []);
 
   const add = (draft: InventoryDraft) => {
+    if (!draft.name.trim() || !draft.quantity.trim()) return;
     const item = createItem(draft);
     const nextState = { ...stateRef.current, items: [item, ...stateRef.current.items] };
     void queueLocalChange(nextState, { id: createOperationId('upsert-items'), type: 'upsert-items', items: [item] }).catch(() => setSyncStatus('error'));
   };
 
   const update = (id: string, draft: InventoryDraft) => {
+    if (!draft.name.trim() || !draft.quantity.trim()) return;
     let changedItem: InventoryItem | undefined;
     const items = stateRef.current.items.map((item) => {
       if (item.id !== id) return item;

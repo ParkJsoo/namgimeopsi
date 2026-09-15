@@ -165,12 +165,18 @@ export default function HomeScreen() {
     openCreate(kind);
   };
 
+  const canSaveItem = Boolean(draft.name.trim() && draft.quantity.trim()) && isValidDateInput(draft.recommendedUseBy);
+
   const saveItem = () => {
     if (!draft.name.trim()) {
       Alert.alert('식재료 이름을 입력해 주세요.');
       return;
     }
 
+    if (!draft.quantity.trim()) {
+      Alert.alert('남은 양을 입력해 주세요.');
+      return;
+    }
     if (!isValidDateInput(draft.recommendedUseBy)) {
       Alert.alert('실제 날짜를 YYYY-MM-DD로 입력해 주세요.');
       return;
@@ -367,6 +373,7 @@ export default function HomeScreen() {
             onChangeText={(quantity) => setDraft((current) => ({ ...current, quantity }))}
             style={styles.input}
           />
+          {!draft.quantity.trim() ? <Text accessibilityRole="alert" style={styles.safetyNote}>남은 양을 입력해 주세요.</Text> : null}
           <Text style={styles.fieldLabel}>보관 위치</Text>
           <StoragePicker value={draft.storage} onChange={(storage) => setDraft((current) => ({ ...current, storage }))} />
           <Text style={styles.fieldLabel}>권장 섭취일 (YYYY-MM-DD, 선택)</Text>
@@ -392,7 +399,7 @@ export default function HomeScreen() {
               ? editingId ? '보관 시작일은 유지해요. 권장 섭취일은 식품 안전을 보장하지 않아요.' : '보관 시작 시각을 기록해요. 권장 섭취일은 식품 안전을 보장하지 않아요.'
               : '포장 표기일과 별도로, 사용자가 정할 수 있는 권장 섭취 시점이에요.'}
           </Text>
-          <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isValidDateInput(draft.recommendedUseBy) }} disabled={!isValidDateInput(draft.recommendedUseBy)} onPress={saveItem} style={[styles.primaryButton, !isValidDateInput(draft.recommendedUseBy) && { opacity: 0.5 }]}>
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSaveItem }} disabled={!canSaveItem} onPress={saveItem} style={[styles.primaryButton, !canSaveItem && { opacity: 0.5 }]}>
             <Text style={styles.primaryButtonText}>{editingId ? '수정 완료' : '냉장고에 담기'}</Text>
           </Pressable>
           {editingId ? (

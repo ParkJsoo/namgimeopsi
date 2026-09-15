@@ -39,6 +39,29 @@ export function parseInventorySyncQueue(value: unknown): InventorySyncOperation[
   });
 }
 
+/** A rejected blank snapshot may be superseded by the user's later edit/delete.
+ * Keep unresolved drafts and transaction/event dependencies for explicit review.
+ */
+export function recoverInvalidQuantityOperations(operations: InventorySyncOperation[]): InventorySyncOperation[] {
+  return operations.flatMap<InventorySyncOperation>((operation, index) => {
+    if (operation.type !== 'upsert-items') return [operation];
+    const items = operation.items.filter((item) => {
+      if (item.quantity.trim()) return true;
+      for (const later of operations.slice(index + 1)) {
+        if (later.type === 'delete-item' && later.itemId === item.id) return false;
+        if (later.type === 'upsert-items') {
+          const replacement = later.items.find((next) => next.id === item.id);
+          if (replacement?.quantity.trim()) return false;
+        } else if ('events' in later && later.events.some((event) => event.inventoryItemId === item.id)) {
+          return true;
+        }
+      }
+      return true;
+    });
+    return items.length ? [{ ...operation, items }] : [];
+  });
+}
+
 function mergeItems(current: InventoryItem[], next: InventoryItem[]) {
   const items = new Map(current.map((item) => [item.id, item]));
   next.forEach((item) => items.set(item.id, item));
