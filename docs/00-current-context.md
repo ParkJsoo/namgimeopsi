@@ -2,7 +2,24 @@
 
 > 새 세션에서 가장 먼저 읽는 작업 인계 문서입니다. 상태가 바뀌면 이 파일도 같이 갱신합니다.
 
-## 최신 진행 — 2026-09-15 접근성·가독성 검토 및 통합
+## 최신 진행 — 2026-09-15 호환 의존성 검토·통합
+
+- **검토/통합:** 사용자 “다음 진행”에 따라 `fd5613c`의 직접 의존성 15개 및 lockfile 변경을 검토했다. 추가 병합 차단 결함은 찾지 못했다. 변경된 패키지 53개의 실제 설치 버전과 lockfile, root manifest 일치를 확인했고 npm registry 출처·integrity 기재 및 Git diff 검사를 통과했다. 원격 main은 `1f3feed`로 새 변경이 없었다. [PR #15](https://github.com/ParkJsoo/namgimeopsi/pull/15)에 push했고 승인된 main 병합을 진행한다. 최종 병합 상태는 PR 링크를 따른다.
+- **검증 근거:** 아래 `fd5613c` 작업의 자동 회귀·타입·lint·웹 export, Doctor 21/21, iOS/Android Release 빌드, QA XCTest 통과 결과를 사용한다. 검증 후 앱·패키지 파일 변경이 없어 빌드나 기기 QA를 반복하지 않았다. GitHub Actions 워크플로는 0개로 원격 CI 통과와 구분한다.
+- **남은 작업:** 중간 등급 audit 14건(원인 advisory 2개)의 상위 패키지 수정과 허용 범위 내 해결 가능성을 먼저 확인한다. 허용 범위 밖 교체가 필요하면 해당 URL 디코딩/빌드 도구 경로의 호환성 검증을 별도 변경으로 진행한다. 타깃 사용자 관찰도 아직 미실시다. 완료한 P2·영상 QA는 반복하지 않고 VoiceOver 음성 생략 결정을 유지한다.
+- **보존:** 이번 통합에서는 실기기·시뮬레이터·Figma·다른 워크스페이스·원격 앱 데이터에 접근하지 않았다. 기존 Demo 데이터·영상과 로컬 QA 근거를 보존한다. 별도 리뷰 보고서는 만들지 않는다.
+
+## 직전 진행 — 2026-09-15 main 통합·Expo SDK 57 호환 패치
+
+- **통합 완료:** [PR #14](https://github.com/ParkJsoo/namgimeopsi/pull/14)를 merge commit으로 병합했다. `main`은 `1f3feed`이며 검토한 `29c29ba`와 파일 트리가 같다. 접근성·가독성 두 커밋과 인계가 모두 포함된다. 기존 Actions 워크플로는 0개다.
+- **의존성 범위:** 해당 main의 clean HEAD에서 `chore/expo-compatible-patches`를 만들었다. [Expo 공식 절차](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/)의 `expo install --fix`로 SDK 57 권장 버전에 맞췄다. Expo `57.0.16→57.0.22`, React Native `0.86.2→0.86.3`를 포함한 직접 의존성 15개와 관련 하위 의존성을 갱신하고 package.json/lockfile을 맞췄다. SDK·React·TypeScript·저장소/서버 SDK의 별도 버전 업그레이드는 포함하지 않는다. 앱 기능·설정·서버 코드는 그대로다.
+- **로컬 검증:** Expo 호환 검사 통과, Expo Doctor 21/21 통과. domain 14, inventory hook 17 + 날짜 9 + 화면 8, receipts 날짜·세션 + 컴포넌트 8, recipes 7, accessibility 3, edge 13, TypeScript·lint·웹 정적 export 통과. Android arm64 Release 빌드도 통과했으며 기기 설치는 하지 않았다. iOS Pods를 SDK 57의 새 조합으로 갱신하고 QA 전용 시뮬레이터 대상 Release 빌드도 통과했다. Pods 갱신 시 로컬 CLT/macOS SDK가 다른 버전인 오류는 명령 한정 `SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk pod update --no-repo-update`로 해결했다. 전역 Xcode/SDK 설정이나 앱 소스는 수정하지 않았다.
+- **남은 audit:** `npm audit` 중간 등급 14개/높음·치명적 0개는 업데이트 전후 동일하다. 원인은 `expo-router → query-string@7.1.3 → decode-uri-component@0.2.2`의 [비정상 URL 디코딩 과다 CPU 사용](https://github.com/advisories/GHSA-vcc3-ghjq-m6fr)과 Expo 설정 도구의 `xcode → uuid@7.0.3` [버퍼 경계 검사](https://github.com/advisories/GHSA-w5hq-g745-h8pq) 두 advisory다. 수정 버전은 각각 0.5.0/11.1.1이며 현재 상위 패키지의 허용 범위를 벗어난다. 강제 downgrade 또는 하위 패키지 override는 적용하지 않았다. URL 입력 경로는 실행 시점에도 연결되므로 모두 개발 전용이라고 표현하지 않는다. 상위 라이브러리 수정 추적 또는 별도 호환성 검증이 후속이다.
+- **네이티브 회귀:** QA iPhone 13 mini / iOS 26.5에서 홈 → 냉장고/필터 → 추가 방식 → 남은 음식 입력 → 저장 없이 닫기 XCTest 1건/실패 0을 확인했다. 탭·직접 추가·필터의 44pt 이상 크기와 가로 화면 내 배치, 스크롤 후 닫기 버튼 노출·취소를 검사하고 냉장고/입력창 하단 캡처도 확인했다. 이번 의존성 변경은 기본 글자 크기 `large`에서 검증했으며 최대 글자·영수증/조리 전체 네이티브 흐름·Android 실행 검증과 구분한다. iOS 번들 SHA-256 `e5e68bdf41452692af99aa1f09c0e3a16fb47886adc557ca499691919c7fdd87`, Android APK `a68a8871833797159766d84ae5b9048208c6e3a73fa77d0bd6aecb8f83729dda`.
+- **보존/사용자 결정:** 실제 VoiceOver 음성은 사용자 요청으로 생략했다. 실기기·Demo 시뮬레이터·다른 워크스페이스·Figma에는 접근하지 않았다. QA UDID `6B38D865-7C34-45E2-9A8E-D425754394D9`만 사용했고 기존 재고 0·원장 0·outbox 0의 전후 내용이 동일하다. 저장·업로드·삭제를 실행하지 않았고 글자 크기 `large`를 유지한 채 QA 앱·시뮬레이터를 종료했다. 두 기존 영상 SHA-256 `29a203…9eca0` / `fd3359…542b`도 일치한다. 캡처·접근성 트리·빌드/진단 근거는 Git 제외 `.expo/dependency-qa/`에 보존하며 별도 리뷰 보고서는 만들지 않는다.
+- **다음:** 호환 의존성 변경은 `chore/expo-compatible-patches`의 검증된 로컬 커밋으로 남긴다(push·PR·병합 전). 다음은 이 변경의 검토·통합, 남은 하위 의존성 advisory의 호환 가능한 해결 검토, 타깃 사용자 관찰이다. 기존 P2·본촬영·영상 QA는 반복하지 않으며 VoiceOver 음성 생략 결정을 유지한다.
+
+## 직전 진행 — 2026-09-15 접근성·가독성 검토 및 통합
 
 - 사용자 “다음 진행”에 따라 `9f0ae68`·`d88e1b5`의 접근성/가독성 변경을 직접 검토했다. 추가 병합 차단 결함은 찾지 못했다. 원격 main은 `dde5689`로 새 변경이 없고 Git diff 검사도 통과했다.
 - 기존 자동 회귀·타입·lint 통과 결과와 기본/최대 글자 QA 시뮬레이터 검증을 통합 근거로 사용한다. 같은 앱 트리의 검증을 반복하지 않았다. GitHub Actions 워크플로는 0개이며 서버 CI 통과와 구분한다.
