@@ -2,6 +2,17 @@
 
 > 새 세션에서 가장 먼저 읽는 작업 인계 문서입니다. 상태가 바뀌면 이 파일도 같이 갱신합니다.
 
+## 다음 세션 시작점 — 2026-09-15 종료 인계
+
+- **현재 단계:** 공개 README·영상 연결과 사용자 Chrome 재생 확인 완료. 전체 main 점검에서 발견한 P2 5건은 **모두 미수정**이다. 이번 세션은 점검·인계까지만 수행했고, 다음 세션에서 수정한다. 완료한 본촬영·영상 평가·재진입 QA를 처음부터 반복하지 않는다.
+- **Git:** 현재 브랜치는 `docs/final-check-handoff`. `main`/마지막 확인 `origin/main`은 `0bfb0ef`, 점검 결과는 로컬 커밋 `12f5946`과 그 뒤 인계 커밋에 있다. 이 브랜치는 아직 push하지 않았다. 새 작업은 이 브랜치의 인계 변경을 포함해서 시작하고, main만 체크아웃해 인계를 버리지 않는다. 현재 커밋은 `git log -3 --oneline`, 변경 여부는 `git status --short --branch`로 확인한다.
+- **첫 순서:** AGENTS.md → 이 문서 전체 → 제품·UX·기술/UI 기준 → 아래 최신 점검을 읽는다. 새 수정 브랜치를 현재 HEAD에서 만들고, P2를 재현 → 회귀 테스트 추가 → 수정 → 관련 검증 → 작은 로컬 커밋 순으로 처리한다.
+- **수정 순서/위치:** ① 공백 수량 검증과 이미 막힌 outbox 복구 (`src/app/index.tsx`, `inventory/use-inventory.ts`, `sync-queue.ts`) ② 영수증 저장 중 편집 차단·완료 수량을 확정 스냅샷으로 고정 (`receipts/ReceiptEntrySheet.tsx`) ③ 초기 캐시 읽기 실패 재시도와 ④ 홈/재고 공통 저장 오류 안내 (`use-inventory.ts`, `index.tsx`) ⑤ 웹 CORS (`supabase/functions/analyze-receipt/index.ts`). 서버 배포·실제 웹 호출 검증은 로컬 수정 검증과 구분한다.
+- **같은 컴퓨터의 재현 근거:** `node .expo/final-check/quantity-queue-repro.mjs`, `node .expo/final-check/receipt-pending-repro.mjs`, `node .expo/final-check/hydration-read-repro.mjs`. 세 스크립트는 실제 hook/컴포넌트와 모의 경계를 사용하고, 현재 결함이 재현되면 종료 코드 0·`REPRO`를 출력한다. 수정 후 통과할 회귀 테스트 자체가 아니므로 예상 결과를 바꿔 정식 테스트에 반영한다. Git 제외 파일이며 이 컴퓨터에 보존했다. CORS는 별도 재현 파일이 없으므로 OPTIONS handler 회귀를 추가한다.
+- **검증:** 관련 inventory/receipts/recipes 검사를 먼저 실행하고, 통합 시 `npm run test:domain`, `npm run test:inventory`, `npm run test:receipts`, `npm run test:recipes`, `npx tsc --noEmit`, `npm run lint`를 확인한다. 웹 CORS 수정은 preflight·정상/오류 응답의 허용 헤더를 확인한다. 현재 기존 검사들은 통과하지만 새 P2 경계를 포함하지 않는다.
+- **보존/접근 경계:** 실기기·Figma·다른 프로젝트/워크스페이스 접근 금지. 필요할 때만 QA 전용 시뮬레이터 UDID `6B38D865-7C34-45E2-9A8E-D425754394D9`를 명시한다. Demo UDID `891FA725-0B92-41D6-95B0-FC03729146B4`의 본촬영 데이터와 두 로컬 영상, 공개 영상 자산을 보존한다. `booted`·전체 종료·일괄 초기화 금지. 이번 점검에서는 기기·서버 데이터를 조회/변경하지 않았다.
+- **후순위:** 접근성 선택 상태·라벨/실제 VoiceOver, 모바일 가독성, `모두 보기`, README 원문 수정 가능 문구 정정, 호환 가능한 의존성 정비·사용자 관찰. 별도 리뷰/메모 문서는 만들지 않으며, 상태와 남은 작업은 이 파일에만 기록한다.
+
 ## 최신 점검 — 2026-09-15 전체 main 최종 점검
 
 - 기준 `main` / `0bfb0ef`는 원격과 일치·clean이었다. 사용자 요청으로 데이터 정합성, 백엔드·보안, UX·접근성 코드 전문가 3명과 전체 현재 구현을 점검했다. 최근 변경 검토보다 넓은 예외 경계에서 아래 P2 5건을 확인했으며 아직 수정하지 않았다. 기존 재진입 수량 수정은 유지됐다.
