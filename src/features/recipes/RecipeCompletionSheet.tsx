@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { useAccessibilityAnnouncement } from '@/hooks/use-accessibility-announcement';
+
 import { KeyboardSheet } from '@/components/KeyboardSheet';
 import type { RecipeRecommendation } from '../domain/recipe-ranking';
 import type { InventoryItem } from '../inventory/types';
@@ -53,13 +55,19 @@ export function RecipeCompletionSheet({
   );
   const canConfirm = Boolean(recommendation && hasValidQuantities && hasChanges);
 
+  const missingQuantityNames = selectedItems.filter((item) =>
+    draft.modes[item.id] === 'remaining' && !draft.remainingQuantities[item.id]?.trim(),
+  ).map((item) => item.name);
+  useAccessibilityAnnouncement(recommendation && missingQuantityNames.length
+    ? `${missingQuantityNames.join(', ')} 남은 양을 입력해 주세요.` : null);
+
   const close = () => { setSavedDraft(null); onClose(); };
 
   return (
     <Modal animationType="slide" transparent visible={recommendation !== null} onRequestClose={close}>
       <KeyboardSheet>
         <View style={styles.handle} />
-        <Text style={styles.title}>조리·섭취를 완료할까요?</Text>
+        <Text accessibilityRole="header" style={styles.title}>조리·섭취를 완료할까요?</Text>
         <Text style={styles.recipeTitle}>{recommendation?.recipe.title}</Text>
         <Text style={styles.copy}>실제로 쓴 뒤 남은 양을 확인해 주세요. 생활 단위는 그대로 남겨요.</Text>
         <View style={styles.itemList}>
@@ -117,7 +125,7 @@ export function RecipeCompletionSheet({
                 />
               ) : null}
               {mode === 'remaining' && !draft.remainingQuantities[item.id]?.trim() ? (
-                <Text accessibilityRole="alert" style={styles.warning}>남은 양을 입력해 주세요.</Text>
+                <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.warning}>남은 양을 입력해 주세요.</Text>
               ) : null}
             </View>
             );
@@ -148,23 +156,23 @@ const styles = StyleSheet.create({
   copy: { marginTop: 8, color: '#4D554B', fontSize: 14, lineHeight: 21 },
   itemList: { marginTop: 16, borderRadius: 14, backgroundColor: '#FFFFFF', overflow: 'hidden' },
   itemRow: { padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E9E6DF' },
-  itemHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  itemHeader: { gap: 4 },
   itemName: { color: '#1D211C', fontSize: 14, fontWeight: '700' },
   itemQuantity: { color: '#6C7168', fontSize: 12 },
   lotList: { gap: 8 },
   lotOption: { minHeight: 64, padding: 10, borderRadius: 12, backgroundColor: '#F8F7F3' },
   lotMeta: { marginTop: 4, fontSize: 12, lineHeight: 18, color: '#6C7168' },
-  choiceRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  choice: { minHeight: 36, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#F1EEE7', justifyContent: 'center' },
+  choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  choice: { minHeight: 44, maxWidth: '100%', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#F1EEE7', justifyContent: 'center' },
   choiceSelected: { backgroundColor: '#E4F0E7', borderWidth: 1, borderColor: '#2F6B4F' },
   choiceText: { color: '#6C7168', fontSize: 12, fontWeight: '600' },
   choiceTextSelected: { color: '#2F6B4F' },
   quantityInput: { minHeight: 44, marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: '#D8D6D0', paddingHorizontal: 12, color: '#1D211C', fontSize: 14 },
   note: { marginTop: 14, color: '#6C7168', fontSize: 12, lineHeight: 17 },
   warning: { marginTop: 14, color: '#8A5C19', fontSize: 12, lineHeight: 17 },
-  primaryButton: { minHeight: 52, marginTop: 20, borderRadius: 14, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center' },
+  primaryButton: { minHeight: 52, paddingHorizontal: 12, paddingVertical: 10, marginTop: 20, borderRadius: 14, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center' },
   primaryButtonDisabled: { backgroundColor: '#A5BCA9' },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  primaryButtonText: { textAlign: 'center', color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   secondaryButton: { minHeight: 44, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   secondaryButtonText: { color: '#2F6B4F', fontSize: 14, fontWeight: '600' },
 });

@@ -9,8 +9,11 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { useAccessibilityAnnouncement } from '@/hooks/use-accessibility-announcement';
 
 import { KeyboardSheet } from '@/components/KeyboardSheet';
 import type { RecipeRecommendation } from '@/features/domain/recipe-ranking';
@@ -49,6 +52,8 @@ function StoragePicker({
       {(['냉장', '냉동', '실온'] as StoragePlace[]).map((storage) => (
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={`보관 위치 ${storage}`}
+          accessibilityState={{ selected: value === storage }}
           key={storage}
           onPress={() => onChange(storage)}
           style={[styles.option, value === storage && styles.optionSelected]}>
@@ -72,12 +77,14 @@ function KindPicker({
     <View style={styles.optionRow}>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ selected: value === 'ingredient' }}
         onPress={() => onChange('ingredient')}
         style={[styles.option, value === 'ingredient' && styles.optionSelected]}>
         <Text style={[styles.optionText, value === 'ingredient' && styles.optionTextSelected]}>식재료</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ selected: value === 'leftover' }}
         onPress={() => onChange('leftover')}
         style={[styles.option, value === 'leftover' && styles.optionSelected]}>
         <Text style={[styles.optionText, value === 'leftover' && styles.optionTextSelected]}>남은 음식</Text>
@@ -87,6 +94,8 @@ function KindPicker({
 }
 
 export default function HomeScreen() {
+  const { fontScale } = useWindowDimensions();
+  const largeText = fontScale > 1.3;
   const [referenceDate, setReferenceDate] = useState(() => localDate());
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -110,6 +119,19 @@ export default function HomeScreen() {
   const [draft, setDraft] = useState<InventoryDraft>(blankDraft);
   const [selectedStorage, setSelectedStorage] = useState<StoragePlace>('냉장');
   const [inventoryFilter, setInventoryFilter] = useState<'all' | 'leftover' | 'today'>('all');
+  const syncMessage = !isReady
+    ? syncStatus === 'error' ? '저장된 재고를 읽지 못했어요. 다시 시도해 주세요.' : '내 냉장고를 불러오고 있어요.'
+    : syncStatus === 'error' ? '저장 또는 동기화하지 못했어요. 탭해서 다시 시도해 주세요.'
+      : syncStatus === 'offline' ? '오프라인으로 저장했어요. 연결되면 동기화해요.'
+        : syncStatus === 'syncing' ? '재고를 안전하게 동기화하고 있어요.' : null;
+  useAccessibilityAnnouncement(
+    !editorOpen && !receiptEntryOpen && !pendingRecommendation && (syncStatus === 'error' || syncStatus === 'offline') ? syncMessage : null,
+  );
+
+
+  useAccessibilityAnnouncement(!editorOpen ? null
+    : !draft.quantity.trim() ? '남은 양을 입력해 주세요.'
+      : !isValidDateInput(draft.recommendedUseBy) ? '실제 날짜를 YYYY-MM-DD로 입력해 주세요.' : null);
 
   const priorityItems = useMemo(
     () => inventory.filter((item) => ['overdue', 'today', 'soon'].includes(getFoodStatus(item, referenceDate)))
@@ -214,7 +236,7 @@ export default function HomeScreen() {
         <View style={styles.loadingScreen}>
           {syncStatus === 'error' ? (
             <>
-              <Text accessibilityRole="alert" style={styles.eyebrow}>저장된 재고를 읽지 못했어요. 다시 시도해 주세요.</Text>
+              <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.eyebrow}>{syncMessage}</Text>
               <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
                 <Text style={styles.syncNoticeText}>다시 불러오기</Text>
               </Pressable>
@@ -230,13 +252,9 @@ export default function HomeScreen() {
       <View style={styles.app}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {syncStatus !== 'synced' ? (
-            <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
-              <Text accessibilityRole={syncStatus === 'error' ? 'alert' : undefined} style={styles.syncNoticeText}>
-                {syncStatus === 'error'
-                  ? '저장 또는 동기화하지 못했어요. 탭해서 다시 시도해 주세요.'
-                  : syncStatus === 'offline'
-                    ? '오프라인으로 저장했어요. 연결되면 동기화해요.'
-                    : '재고를 안전하게 동기화하고 있어요.'}
+            <Pressable accessibilityRole="button" accessibilityLabel={syncMessage ?? undefined} accessibilityHint="재고 저장과 동기화를 다시 시도해요." onPress={retrySync} style={styles.syncNotice}>
+              <Text accessibilityRole={syncStatus === 'error' ? 'alert' : undefined} accessibilityLiveRegion="polite" style={styles.syncNoticeText}>
+                {syncMessage}
               </Text>
             </Pressable>
           ) : null}
@@ -254,6 +272,8 @@ export default function HomeScreen() {
                 {featuredPriority ? (
                   <Pressable
                     accessibilityRole="button"
+                    accessibilityLabel={`${featuredPriority.name}, ${featuredPriority.quantity}, ${featuredPriority.storage}, ${getDateLabel(featuredPriority, referenceDate)}`}
+                    accessibilityHint="재고 수정 화면을 열어요."
                     onPress={() => openEdit(featuredPriority)}
                     style={styles.priorityRow}>
                     <View style={styles.priorityCopy}>
@@ -267,7 +287,7 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>오늘의 한 끼</Text>
+                <Text accessibilityRole="header" style={styles.sectionTitle}>오늘의 한 끼</Text>
               </View>
               {recommendations.length ? (
                 recommendations.map((recommendation) => (
@@ -286,8 +306,8 @@ export default function HomeScreen() {
             </>
           ) : (
             <>
-              <View style={styles.inventoryHeader}>
-                <View>
+              <View style={[styles.inventoryHeader, largeText && styles.stackedRow]}>
+                <View style={styles.inventoryHeading}>
                   <Text style={styles.eyebrow}>내 냉장고</Text>
                   <Text style={styles.title}>먼저 확인할 순서예요</Text>
                 </View>
@@ -304,6 +324,8 @@ export default function HomeScreen() {
                 ] as const).map(([filter, label]) => (
                   <Pressable
                     accessibilityRole="button"
+                    accessibilityLabel={`재고 필터 ${label}`}
+                    accessibilityState={{ selected: inventoryFilter === filter }}
                     key={filter}
                     onPress={() => setInventoryFilter(filter)}
                     style={[styles.filterChip, inventoryFilter === filter && styles.filterChipSelected]}>
@@ -313,12 +335,14 @@ export default function HomeScreen() {
               </View>
               <View style={styles.inventoryList}>
                 {visibleInventory.map((item) => (
-                    <Pressable key={item.id} onPress={() => openEdit(item)} style={styles.inventoryRow}>
-                      <View style={styles.inventoryCopy}>
+                    <Pressable key={item.id} accessibilityRole="button"
+                      accessibilityLabel={`${item.name}, ${item.quantity}, ${item.storage}, ${getDateLabel(item, referenceDate)}`}
+                      accessibilityHint="재고 수정 화면을 열어요." onPress={() => openEdit(item)} style={[styles.inventoryRow, largeText && styles.stackedRow]}>
+                      <View style={[styles.inventoryCopy, largeText && styles.fullWidth]}>
                         <Text style={styles.foodName}>{item.name}</Text>
                         <Text style={styles.inventoryMeta}>{item.quantity} · {getDateDescription(item)}</Text>
                       </View>
-                      <View style={[styles.statusChip, statusTone(item, referenceDate)]}>
+                      <View style={[styles.statusChip, statusTone(item, referenceDate), largeText && styles.statusChipLarge]}>
                         <Text style={styles.statusText}>{getDateLabel(item, referenceDate).replace(' · ', '\n')}</Text>
                       </View>
                     </Pressable>
@@ -332,15 +356,15 @@ export default function HomeScreen() {
         </ScrollView>
 
         <View style={styles.bottomBar}>
-          <Pressable accessibilityRole="tab" onPress={() => setActiveTab('home')} style={styles.tab}>
-            <Text style={[styles.tabIcon, activeTab === 'home' && styles.tabActive]}>⌂</Text>
+          <Pressable accessibilityRole="tab" accessibilityLabel="홈" accessibilityState={{ selected: activeTab === 'home' }} onPress={() => setActiveTab('home')} style={styles.tab}>
+            <Text allowFontScaling={false} style={[styles.tabIcon, activeTab === 'home' && styles.tabActive]}>⌂</Text>
             <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActive]}>홈</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => setReceiptEntryOpen(true)} style={styles.fab}>
-            <Text style={styles.fabText}>＋</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="재고 추가" accessibilityHint="영수증, 남은 음식, 직접 추가 중 등록 방법을 선택해요." onPress={() => setReceiptEntryOpen(true)} style={styles.fab}>
+            <Text allowFontScaling={false} style={styles.fabText}>＋</Text>
           </Pressable>
-          <Pressable accessibilityRole="tab" onPress={() => setActiveTab('inventory')} style={styles.tab}>
-            <Text style={[styles.tabIcon, activeTab === 'inventory' && styles.tabActive]}>▤</Text>
+          <Pressable accessibilityRole="tab" accessibilityLabel="냉장고" accessibilityState={{ selected: activeTab === 'inventory' }} onPress={() => setActiveTab('inventory')} style={styles.tab}>
+            <Text allowFontScaling={false} style={[styles.tabIcon, activeTab === 'inventory' && styles.tabActive]}>▤</Text>
             <Text style={[styles.tabLabel, activeTab === 'inventory' && styles.tabActive]}>냉장고</Text>
           </Pressable>
         </View>
@@ -349,7 +373,7 @@ export default function HomeScreen() {
       <Modal animationType="slide" transparent visible={editorOpen} onRequestClose={() => setEditorOpen(false)}>
         <KeyboardSheet>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>{editingId ? '재고 수정' : '직접 추가'}</Text>
+          <Text accessibilityRole="header" style={styles.sheetTitle}>{editingId ? '재고 수정' : '직접 추가'}</Text>
           <Text style={styles.fieldLabel}>등록할 항목</Text>
           <KindPicker
             value={draft.kind}
@@ -378,13 +402,16 @@ export default function HomeScreen() {
             onChangeText={(quantity) => setDraft((current) => ({ ...current, quantity }))}
             style={styles.input}
           />
-          {!draft.quantity.trim() ? <Text accessibilityRole="alert" style={styles.safetyNote}>남은 양을 입력해 주세요.</Text> : null}
+          {!draft.quantity.trim() ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.safetyNote}>남은 양을 입력해 주세요.</Text> : null}
           <Text style={styles.fieldLabel}>보관 위치</Text>
           <StoragePicker value={draft.storage} onChange={(storage) => setDraft((current) => ({ ...current, storage }))} />
           <Text style={styles.fieldLabel}>권장 섭취일 (YYYY-MM-DD, 선택)</Text>
           <View style={styles.optionRow}>
             {([['오늘', 0], ['내일', 1]] as const).map(([label, days]) => (
-              <Pressable accessibilityRole="button" key={label} style={styles.option}
+              <Pressable accessibilityRole="button" key={label}
+                accessibilityLabel={`권장 섭취일 ${label}`}
+                accessibilityState={{ selected: draft.recommendedUseBy === dateAfterDays(days) }}
+                style={styles.option}
                 onPress={() => setDraft((current) => ({ ...current, recommendedUseBy: dateAfterDays(days) }))}>
                 <Text style={styles.optionText}>{label}</Text>
               </Pressable>
@@ -398,7 +425,7 @@ export default function HomeScreen() {
             onChangeText={(recommendedUseBy) => setDraft((current) => ({ ...current, recommendedUseBy }))}
             style={styles.input}
           />
-          {!isValidDateInput(draft.recommendedUseBy) ? <Text accessibilityRole="alert" style={styles.safetyNote}>실제 날짜를 YYYY-MM-DD로 입력해 주세요.</Text> : null}
+          {!isValidDateInput(draft.recommendedUseBy) ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.safetyNote}>실제 날짜를 YYYY-MM-DD로 입력해 주세요.</Text> : null}
           <Text style={styles.safetyNote}>
             {draft.kind === 'leftover'
               ? editingId ? '보관 시작일은 유지해요. 권장 섭취일은 식품 안전을 보장하지 않아요.' : '보관 시작 시각을 기록해요. 권장 섭취일은 식품 안전을 보장하지 않아요.'
@@ -408,7 +435,7 @@ export default function HomeScreen() {
             <Text style={styles.primaryButtonText}>{editingId ? '수정 완료' : '냉장고에 담기'}</Text>
           </Pressable>
           {editingId ? (
-            <Pressable accessibilityRole="button" onPress={deleteItem} style={styles.deleteButton}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${draft.name} 재고에서 제외`} onPress={deleteItem} style={styles.deleteButton}>
               <Text style={styles.deleteButtonText}>재고에서 제외</Text>
             </Pressable>
           ) : null}
@@ -456,11 +483,14 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   app: { flex: 1, backgroundColor: '#FFFFFF' },
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF8F4' },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 116 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 36 },
   header: { marginBottom: 104 },
-  syncNotice: { alignSelf: 'flex-start', marginTop: -92, marginBottom: 20, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: '#FFF0DC' },
+  syncNotice: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', marginBottom: 20, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: '#FFF0DC' },
   syncNoticeText: { color: '#6C4A18', fontSize: 12, lineHeight: 17 },
-  inventoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  inventoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 24 },
+  inventoryHeading: { flex: 1 },
+  stackedRow: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
+  fullWidth: { flex: 0, width: '100%' },
   eyebrow: { fontSize: 15, lineHeight: 22, color: '#6C7168' },
   title: { marginTop: 4, fontSize: 25, lineHeight: 34, fontWeight: '700', color: '#1D211C', letterSpacing: -0.5 },
   sectionTitle: { fontSize: 18, lineHeight: 26, fontWeight: '700', color: '#1D211C' },
@@ -476,12 +506,12 @@ const styles = StyleSheet.create({
   recipeEmptyTitle: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: '#1D211C' },
   recipeEmptyCopy: { marginTop: 6, fontSize: 13, lineHeight: 19, color: '#6C7168' },
   optionRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  option: { flex: 1, minHeight: 44, borderRadius: 14, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
+  option: { flex: 1, minHeight: 44, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 14, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
   optionSelected: { backgroundColor: '#E4F0E7', borderWidth: 1, borderColor: '#2F6B4F' },
-  optionText: { color: '#6C7168', fontSize: 14, fontWeight: '600' },
+  optionText: { textAlign: 'center', color: '#6C7168', fontSize: 14, fontWeight: '600' },
   optionTextSelected: { color: '#2F6B4F' },
-  filterRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  filterChip: { minHeight: 36, borderRadius: 999, paddingHorizontal: 13, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
+  filterChip: { minHeight: 44, maxWidth: '100%', paddingVertical: 8, borderRadius: 999, paddingHorizontal: 13, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
   filterChipSelected: { backgroundColor: '#E4F0E7' },
   filterText: { color: '#6C7168', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   filterTextSelected: { color: '#2F6B4F' },
@@ -490,17 +520,18 @@ const styles = StyleSheet.create({
   inventoryCopy: { flex: 1, paddingRight: 8 },
   inventoryMeta: { marginTop: 2, color: '#6C7168', fontSize: 13, lineHeight: 18 },
   statusChip: { maxWidth: 135, flexShrink: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  statusChipLarge: { maxWidth: '100%', alignSelf: 'flex-start' },
   statusToday: { backgroundColor: '#FFF0DC' },
   statusSoon: { backgroundColor: '#E4F0E7' },
   statusRelaxed: { backgroundColor: '#F1EEE7' },
-  statusText: { color: '#4D554B', fontSize: 11, lineHeight: 16, fontWeight: '600' },
+  statusText: { color: '#4D554B', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   emptyText: { padding: 20, color: '#6C7168', fontSize: 14, lineHeight: 21 },
-  addSmallButton: { minHeight: 44, paddingHorizontal: 14, borderRadius: 14, backgroundColor: '#E4F0E7', alignItems: 'center', justifyContent: 'center' },
+  addSmallButton: { minHeight: 44, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 14, backgroundColor: '#E4F0E7', alignItems: 'center', justifyContent: 'center' },
   addSmallButtonText: { color: '#2F6B4F', fontSize: 13, fontWeight: '700' },
-  bottomBar: { position: 'absolute', left: 20, right: 20, bottom: 22, height: 68, borderRadius: 24, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', shadowColor: '#1D211C', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
-  tab: { minWidth: 64, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  bottomBar: { marginHorizontal: 20, marginBottom: 22, minHeight: 68, paddingVertical: 8, borderRadius: 24, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', shadowColor: '#1D211C', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
+  tab: { flex: 1, minWidth: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   tabIcon: { fontSize: 21, color: '#8B9087' },
-  tabLabel: { marginTop: 1, fontSize: 11, color: '#8B9087', fontWeight: '600' },
+  tabLabel: { textAlign: 'center', marginTop: 1, fontSize: 12, color: '#6C7168', fontWeight: '600' },
   tabActive: { color: '#2F6B4F' },
   fab: { width: 56, height: 56, borderRadius: 28, marginTop: -30, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center', shadowColor: '#2F6B4F', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
   fabText: { color: '#FFFFFF', fontSize: 29, lineHeight: 31, fontWeight: '300' },
@@ -509,8 +540,8 @@ const styles = StyleSheet.create({
   fieldLabel: { marginTop: 14, marginBottom: 6, color: '#4D554B', fontSize: 13, lineHeight: 18, fontWeight: '600' },
   input: { minHeight: 52, borderRadius: 14, paddingHorizontal: 14, backgroundColor: '#FFFFFF', color: '#1D211C', fontSize: 15 },
   safetyNote: { marginTop: 14, color: '#6C7168', fontSize: 12, lineHeight: 17 },
-  primaryButton: { minHeight: 52, marginTop: 20, borderRadius: 14, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center' },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  primaryButton: { minHeight: 52, paddingHorizontal: 12, paddingVertical: 10, marginTop: 20, borderRadius: 14, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center' },
+  primaryButtonText: { textAlign: 'center', color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   deleteButton: { minHeight: 44, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   deleteButtonText: { color: '#B73D32', fontSize: 14, fontWeight: '600' },
   closeButtonText: { color: '#626B60', fontSize: 14, fontWeight: '600' },
