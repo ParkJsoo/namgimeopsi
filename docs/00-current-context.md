@@ -2,7 +2,16 @@
 
 > 새 세션에서 가장 먼저 읽는 작업 인계 문서입니다. 상태가 바뀌면 이 파일도 같이 갱신합니다.
 
-## 최신 진행 — 2026-09-15 호환 의존성 검토·통합
+## 최신 진행 — 2026-09-15 하위 의존성 보안 수정·호환성 검증
+
+- **Git/범위:** [PR #15](https://github.com/ParkJsoo/namgimeopsi/pull/15)는 병합 완료이며 `main`/`origin/main` `121b9fe`의 clean HEAD에서 `fix/transitive-dependency-security`를 만들었다. npm registry에서 최신 `expo-router@57.0.21 → query-string@7.1.3 → decode-uri-component@0.2.2`, `xcode@3.0.1 → uuid@7.0.3` 조합을 확인했다. 상위 패키지 허용 범위 안에는 두 advisory 수정 버전이 없다.
+- **수정:** `xcode` 하위에만 `uuid@11.1.1`을 지정하는 npm override를 추가했다. 이 버전은 [버퍼 경계 검사 advisory](https://github.com/advisories/GHSA-w5hq-g745-h8pq)의 수정 버전이며 CommonJS `require`와 Xcode가 사용하는 `uuid.v4()`를 제공한다. lockfile의 패키지 버전 변경은 uuid 하나다. 앱 런타임·직접 의존성·네이티브 설정·서버 소스 변경은 없다. 상위 xcode가 수정 버전을 정식 채택하면 override 제거를 검토한다.
+- **회귀:** 새 `npm run test:dependencies` 3건은 실제 xcode의 24자리 ID 생성/중복 방지·100개 그룹 직렬화/파싱, xcode가 해석하는 uuid v3/v5의 짧은 버퍼·음수 offset·끝 경계 거부와 버퍼 불변성, 정상 offset 쓰기를 검사한다. 수정 전 ID 검사는 통과하고 버퍼 검사 2건은 실패했으며 수정 후 모두 통과했다. Expo 호환 검사·설정 introspect·Doctor 21/21, TypeScript·lint, domain 14·inventory hook 17/날짜 9/화면 8·receipts 날짜/세션/컴포넌트 8·recipes 7·accessibility 3도 통과했다. 이번 변경은 Node 빌드 도구의 하위 패키지만 바뀌어 네이티브 빌드·기기 실행은 반복하지 않았다.
+- **audit 결과:** 중간 등급 **14→3**, 높음·치명적 0이다. uuid와 이에 연결된 경고 11개가 해소됐고 `decode-uri-component`, `query-string`, `expo-router` 3개 노드에 [URL 디코딩 과다 CPU 사용 advisory](https://github.com/advisories/GHSA-vcc3-ghjq-m6fr) 하나가 남아 있다. 전체 보안 문제가 해결됐다고 표현하지 않는다.
+- **디코더 호환성:** 공식 npm `decode-uri-component@0.5.0`을 Git 제외 경로에 내려받아 현재 query-string의 require 경계에 연결하는 검사에서, 정상 한글 쿼리도 `decodeComponent is not a function`으로 실패함을 확인했다. 0.5.0의 ESM default export와 query-string 7의 CommonJS 함수 호출 방식이 다르므로 단순 override는 적용하지 않았다. 앱의 전체 URL 도달성·입력 크기 제한의 유효성은 아직 검증하지 않았다. 재현 스크립트와 진단/audit 근거는 `.expo/security-qa/`에 보존한다.
+- **보존/다음:** 이번 수정은 검증된 로컬 커밋으로 남긴다(push·PR·병합 전). 다음은 uuid 수정 검토·통합, URL 디코더의 모듈 호환성을 포함한 해결 검토, 타깃 사용자 관찰이다. 실기기·시뮬레이터·Figma·다른 워크스페이스·원격 앱 데이터에는 접근하지 않았고 Demo 데이터·기존 영상은 보존했다. VoiceOver 음성 생략을 유지하며 별도 리뷰 보고서는 만들지 않는다.
+
+## 직전 진행 — 2026-09-15 호환 의존성 검토·통합
 
 - **검토/통합:** 사용자 “다음 진행”에 따라 `fd5613c`의 직접 의존성 15개 및 lockfile 변경을 검토했다. 추가 병합 차단 결함은 찾지 못했다. 변경된 패키지 53개의 실제 설치 버전과 lockfile, root manifest 일치를 확인했고 npm registry 출처·integrity 기재 및 Git diff 검사를 통과했다. 원격 main은 `1f3feed`로 새 변경이 없었다. [PR #15](https://github.com/ParkJsoo/namgimeopsi/pull/15)에 push했고 승인된 main 병합을 진행한다. 최종 병합 상태는 PR 링크를 따른다.
 - **검증 근거:** 아래 `fd5613c` 작업의 자동 회귀·타입·lint·웹 export, Doctor 21/21, iOS/Android Release 빌드, QA XCTest 통과 결과를 사용한다. 검증 후 앱·패키지 파일 변경이 없어 빌드나 기기 QA를 반복하지 않았다. GitHub Actions 워크플로는 0개로 원격 CI 통과와 구분한다.

@@ -48,7 +48,13 @@
     "test:accessibility": "node src/hooks/use-accessibility-announcement.test.mjs",
     "test:edge": "node supabase/functions/analyze-receipt/cors.test.mjs",
     "test:recipes": "node src/features/recipes/completion-validation.test.mjs",
-    "test:inventory": "node --experimental-strip-types src/features/inventory/receipt-persistence.test.mjs && node --experimental-strip-types src/features/inventory/dates.test.mjs && node src/features/inventory/inventory-feedback.test.mjs"
+    "test:inventory": "node --experimental-strip-types src/features/inventory/receipt-persistence.test.mjs && node --experimental-strip-types src/features/inventory/dates.test.mjs && node src/features/inventory/inventory-feedback.test.mjs",
+    "test:dependencies": "node --test scripts/tests/dependency-compatibility.test.mjs"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "xcode": {
+      "uuid": "11.1.1"
+    }
+  }
 }
