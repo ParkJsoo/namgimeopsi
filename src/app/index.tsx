@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -93,6 +94,8 @@ function KindPicker({
 }
 
 export default function HomeScreen() {
+  const { fontScale } = useWindowDimensions();
+  const largeText = fontScale > 1.3;
   const [referenceDate, setReferenceDate] = useState(() => localDate());
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -303,8 +306,8 @@ export default function HomeScreen() {
             </>
           ) : (
             <>
-              <View style={styles.inventoryHeader}>
-                <View>
+              <View style={[styles.inventoryHeader, largeText && styles.stackedRow]}>
+                <View style={styles.inventoryHeading}>
                   <Text style={styles.eyebrow}>내 냉장고</Text>
                   <Text style={styles.title}>먼저 확인할 순서예요</Text>
                 </View>
@@ -334,12 +337,12 @@ export default function HomeScreen() {
                 {visibleInventory.map((item) => (
                     <Pressable key={item.id} accessibilityRole="button"
                       accessibilityLabel={`${item.name}, ${item.quantity}, ${item.storage}, ${getDateLabel(item, referenceDate)}`}
-                      accessibilityHint="재고 수정 화면을 열어요." onPress={() => openEdit(item)} style={styles.inventoryRow}>
-                      <View style={styles.inventoryCopy}>
+                      accessibilityHint="재고 수정 화면을 열어요." onPress={() => openEdit(item)} style={[styles.inventoryRow, largeText && styles.stackedRow]}>
+                      <View style={[styles.inventoryCopy, largeText && styles.fullWidth]}>
                         <Text style={styles.foodName}>{item.name}</Text>
                         <Text style={styles.inventoryMeta}>{item.quantity} · {getDateDescription(item)}</Text>
                       </View>
-                      <View style={[styles.statusChip, statusTone(item, referenceDate)]}>
+                      <View style={[styles.statusChip, statusTone(item, referenceDate), largeText && styles.statusChipLarge]}>
                         <Text style={styles.statusText}>{getDateLabel(item, referenceDate).replace(' · ', '\n')}</Text>
                       </View>
                     </Pressable>
@@ -354,14 +357,14 @@ export default function HomeScreen() {
 
         <View style={styles.bottomBar}>
           <Pressable accessibilityRole="tab" accessibilityLabel="홈" accessibilityState={{ selected: activeTab === 'home' }} onPress={() => setActiveTab('home')} style={styles.tab}>
-            <Text style={[styles.tabIcon, activeTab === 'home' && styles.tabActive]}>⌂</Text>
+            <Text allowFontScaling={false} style={[styles.tabIcon, activeTab === 'home' && styles.tabActive]}>⌂</Text>
             <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActive]}>홈</Text>
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="재고 추가" accessibilityHint="영수증, 남은 음식, 직접 추가 중 등록 방법을 선택해요." onPress={() => setReceiptEntryOpen(true)} style={styles.fab}>
-            <Text style={styles.fabText}>＋</Text>
+            <Text allowFontScaling={false} style={styles.fabText}>＋</Text>
           </Pressable>
           <Pressable accessibilityRole="tab" accessibilityLabel="냉장고" accessibilityState={{ selected: activeTab === 'inventory' }} onPress={() => setActiveTab('inventory')} style={styles.tab}>
-            <Text style={[styles.tabIcon, activeTab === 'inventory' && styles.tabActive]}>▤</Text>
+            <Text allowFontScaling={false} style={[styles.tabIcon, activeTab === 'inventory' && styles.tabActive]}>▤</Text>
             <Text style={[styles.tabLabel, activeTab === 'inventory' && styles.tabActive]}>냉장고</Text>
           </Pressable>
         </View>
@@ -480,11 +483,14 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   app: { flex: 1, backgroundColor: '#FFFFFF' },
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF8F4' },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 116 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 36 },
   header: { marginBottom: 104 },
-  syncNotice: { alignSelf: 'flex-start', marginTop: -92, marginBottom: 20, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: '#FFF0DC' },
+  syncNotice: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', marginBottom: 20, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: '#FFF0DC' },
   syncNoticeText: { color: '#6C4A18', fontSize: 12, lineHeight: 17 },
-  inventoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  inventoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 24 },
+  inventoryHeading: { flex: 1 },
+  stackedRow: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
+  fullWidth: { flex: 0, width: '100%' },
   eyebrow: { fontSize: 15, lineHeight: 22, color: '#6C7168' },
   title: { marginTop: 4, fontSize: 25, lineHeight: 34, fontWeight: '700', color: '#1D211C', letterSpacing: -0.5 },
   sectionTitle: { fontSize: 18, lineHeight: 26, fontWeight: '700', color: '#1D211C' },
@@ -500,12 +506,12 @@ const styles = StyleSheet.create({
   recipeEmptyTitle: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: '#1D211C' },
   recipeEmptyCopy: { marginTop: 6, fontSize: 13, lineHeight: 19, color: '#6C7168' },
   optionRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  option: { flex: 1, minHeight: 44, borderRadius: 14, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
+  option: { flex: 1, minHeight: 44, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 14, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
   optionSelected: { backgroundColor: '#E4F0E7', borderWidth: 1, borderColor: '#2F6B4F' },
-  optionText: { color: '#6C7168', fontSize: 14, fontWeight: '600' },
+  optionText: { textAlign: 'center', color: '#6C7168', fontSize: 14, fontWeight: '600' },
   optionTextSelected: { color: '#2F6B4F' },
-  filterRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  filterChip: { minHeight: 36, borderRadius: 999, paddingHorizontal: 13, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
+  filterChip: { minHeight: 44, maxWidth: '100%', paddingVertical: 8, borderRadius: 999, paddingHorizontal: 13, backgroundColor: '#F1EEE7', alignItems: 'center', justifyContent: 'center' },
   filterChipSelected: { backgroundColor: '#E4F0E7' },
   filterText: { color: '#6C7168', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   filterTextSelected: { color: '#2F6B4F' },
@@ -514,17 +520,18 @@ const styles = StyleSheet.create({
   inventoryCopy: { flex: 1, paddingRight: 8 },
   inventoryMeta: { marginTop: 2, color: '#6C7168', fontSize: 13, lineHeight: 18 },
   statusChip: { maxWidth: 135, flexShrink: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  statusChipLarge: { maxWidth: '100%', alignSelf: 'flex-start' },
   statusToday: { backgroundColor: '#FFF0DC' },
   statusSoon: { backgroundColor: '#E4F0E7' },
   statusRelaxed: { backgroundColor: '#F1EEE7' },
-  statusText: { color: '#4D554B', fontSize: 11, lineHeight: 16, fontWeight: '600' },
+  statusText: { color: '#4D554B', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   emptyText: { padding: 20, color: '#6C7168', fontSize: 14, lineHeight: 21 },
-  addSmallButton: { minHeight: 44, paddingHorizontal: 14, borderRadius: 14, backgroundColor: '#E4F0E7', alignItems: 'center', justifyContent: 'center' },
+  addSmallButton: { minHeight: 44, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 14, backgroundColor: '#E4F0E7', alignItems: 'center', justifyContent: 'center' },
   addSmallButtonText: { color: '#2F6B4F', fontSize: 13, fontWeight: '700' },
-  bottomBar: { position: 'absolute', left: 20, right: 20, bottom: 22, height: 68, borderRadius: 24, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', shadowColor: '#1D211C', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
-  tab: { minWidth: 64, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  bottomBar: { marginHorizontal: 20, marginBottom: 22, minHeight: 68, paddingVertical: 8, borderRadius: 24, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', shadowColor: '#1D211C', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
+  tab: { flex: 1, minWidth: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   tabIcon: { fontSize: 21, color: '#8B9087' },
-  tabLabel: { marginTop: 1, fontSize: 11, color: '#8B9087', fontWeight: '600' },
+  tabLabel: { textAlign: 'center', marginTop: 1, fontSize: 12, color: '#6C7168', fontWeight: '600' },
   tabActive: { color: '#2F6B4F' },
   fab: { width: 56, height: 56, borderRadius: 28, marginTop: -30, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center', shadowColor: '#2F6B4F', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
   fabText: { color: '#FFFFFF', fontSize: 29, lineHeight: 31, fontWeight: '300' },
@@ -533,8 +540,8 @@ const styles = StyleSheet.create({
   fieldLabel: { marginTop: 14, marginBottom: 6, color: '#4D554B', fontSize: 13, lineHeight: 18, fontWeight: '600' },
   input: { minHeight: 52, borderRadius: 14, paddingHorizontal: 14, backgroundColor: '#FFFFFF', color: '#1D211C', fontSize: 15 },
   safetyNote: { marginTop: 14, color: '#6C7168', fontSize: 12, lineHeight: 17 },
-  primaryButton: { minHeight: 52, marginTop: 20, borderRadius: 14, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center' },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  primaryButton: { minHeight: 52, paddingHorizontal: 12, paddingVertical: 10, marginTop: 20, borderRadius: 14, backgroundColor: '#2F6B4F', alignItems: 'center', justifyContent: 'center' },
+  primaryButtonText: { textAlign: 'center', color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   deleteButton: { minHeight: 44, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   deleteButtonText: { color: '#B73D32', fontSize: 14, fontWeight: '600' },
   closeButtonText: { color: '#626B60', fontSize: 14, fontWeight: '600' },

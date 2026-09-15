@@ -30,7 +30,7 @@ function harness(inventory = {}) {
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     'react-native': {
       ...Object.fromEntries(['View', 'Text', 'TextInput', 'Pressable', 'ScrollView', 'Modal'].map((name) => [name, name])),
-      StyleSheet: { create: (styles) => styles }, Alert: { alert: () => {} },
+      useWindowDimensions: () => ({ width: 375, height: 812, fontScale: 1 }), StyleSheet: { create: (styles) => styles }, Alert: { alert: () => {} },
     },
     'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     '@/features/inventory/dates': dates,
