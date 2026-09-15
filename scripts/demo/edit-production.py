@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Rebuild the 2026-09-14 local demo edit; requires Pillow, ffmpeg and recorded take2 artifacts."""
+"""Create a separate P3 edit from the 2026-09-14 take; never overwrite the source."""
 from PIL import Image,ImageDraw,ImageFont
 from pathlib import Path
-import re,json,subprocess
-p=Path('.expo/demo-production/final')
-start=json.loads((p/'take2-time.json').read_text())['started']
-marks={n:float(t)-start for n,t in re.findall(r'REHEARSAL (\S+) ([0-9.]+)',(p/'take2.log').read_text())}
+import argparse,re,json,subprocess
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--output-dir',type=Path,default=Path('.expo/demo-production/p3-edit'))
+args=parser.parse_args()
+source=Path('.expo/demo-production/final')
+start=json.loads((source/'take2-time.json').read_text())['started']
+marks={n:float(t)-start for n,t in re.findall(r'REHEARSAL (\S+) ([0-9.]+)',(source/'take2.log').read_text())}
+p=args.output_dir
+p.mkdir(parents=True,exist_ok=False)
 scenes=[
  ('00-intro','01-receipt-start',8,'남김없이','초안부터 실제 소비까지\n사용자의 확인으로 연결합니다.','01  영수증 검수    02  남은 음식    03  남은 양 기록'),
  ('01-receipt-start','03-review',12,'영수증으로 시작','사진은 비공개로 보관합니다.\n현재 분석 결과는 고정 샘플입니다.','실제 OCR 정확도를 시연하는 영상이 아닙니다.'),
@@ -34,12 +39,14 @@ for idx,(a,b,duration,title,body,note) in enumerate(scenes):
  d.text((664,960),'입력·스크롤·대기 구간 축약  |  무음·한국어 자막',font=font(26),fill='#6C7168')
  d.text((1730,1000),f'{idx+1:02d} / 10',font=font(24),fill='#6C7168')
  card=p/f'card-{idx:02}.png';im.save(card)
- ends = {'00-intro': marks[a]+2.7, '06-before-intake': marks['07-intake-complete']+1.8, '11-recommendation': marks[a]+3.8}
+ # Keep the saved leftover inventory visible until its explanation ends.
+ # The final 0.5s of this source scene begins the navigation back to Home.
+ ends = {'00-intro': marks[a]+2.7, '06-before-intake': marks['07-intake-complete']+1.8, '09-leftover': marks['11-recommendation']-.5, '11-recommendation': marks[a]+3.8}
  length=ends.get(a,marks[b])-marks[a];speed=min(1,(duration-.2)/length)
  out=p/f'segment-{idx:02}.mp4'
- cmd=['ffmpeg','-y','-v','error','-ss',str(marks[a]),'-t',str(length),'-i',str(p/'take2-cfr.mp4'),'-loop','1','-i',str(card),'-filter_complex',f'[0:v]setpts={speed}*(PTS-STARTPTS),fps=30,scale=444:960,tpad=stop_mode=clone:stop_duration={duration}[phone];[1:v][phone]overlay=98:60:shortest=1,format=yuv420p[out]','-map','[out]','-t',str(duration),'-r','30','-c:v','libx264','-preset','fast','-crf','19','-an',str(out)]
+ cmd=['ffmpeg','-n','-v','error','-ss',str(marks[a]),'-t',str(length),'-i',str(source/'take2-cfr.mp4'),'-loop','1','-i',str(card),'-filter_complex',f'[0:v]setpts={speed}*(PTS-STARTPTS),fps=30,scale=444:960,tpad=stop_mode=clone:stop_duration={duration}[phone];[1:v][phone]overlay=98:60:shortest=1,format=yuv420p[out]','-map','[out]','-t',str(duration),'-r','30','-c:v','libx264','-preset','fast','-crf','19','-an',str(out)]
  subprocess.run(cmd,check=True);segments.append(out.name);timeline.append({'start':offset,'duration':duration,'title':title,'body':body,'sourceStart':marks[a],'sourceEnd':marks[a]+length});offset+=duration
 (p/'segments.txt').write_text(''.join(f"file '{s}'\n" for s in segments))
-subprocess.run(['ffmpeg','-y','-v','error','-f','concat','-safe','0','-i',str(p/'segments.txt'),'-c','copy','-movflags','+faststart',str(p/'namgimeopsi-demo-ko.mp4')],check=True)
+subprocess.run(['ffmpeg','-n','-v','error','-f','concat','-safe','0','-i',str(p/'segments.txt'),'-c','copy','-movflags','+faststart',str(p/'namgimeopsi-demo-ko.mp4')],check=True)
 (p/'timeline.json').write_text(json.dumps(timeline,ensure_ascii=False,indent=2))
 print('Created 120-second edit',flush=True)
