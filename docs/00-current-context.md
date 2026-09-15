@@ -2,7 +2,14 @@
 
 > 새 세션에서 가장 먼저 읽는 작업 인계 문서입니다. 상태가 바뀌면 이 파일도 같이 갱신합니다.
 
-## 최신 진행 — 2026-09-15 main 통합·Expo SDK 57 호환 패치
+## 최신 진행 — 2026-09-15 호환 의존성 검토·통합
+
+- **검토/통합:** 사용자 “다음 진행”에 따라 `fd5613c`의 직접 의존성 15개 및 lockfile 변경을 검토했다. 추가 병합 차단 결함은 찾지 못했다. 변경된 패키지 53개의 실제 설치 버전과 lockfile, root manifest 일치를 확인했고 npm registry 출처·integrity 기재 및 Git diff 검사를 통과했다. 원격 main은 `1f3feed`로 새 변경이 없었다. [PR #15](https://github.com/ParkJsoo/namgimeopsi/pull/15)에 push했고 승인된 main 병합을 진행한다. 최종 병합 상태는 PR 링크를 따른다.
+- **검증 근거:** 아래 `fd5613c` 작업의 자동 회귀·타입·lint·웹 export, Doctor 21/21, iOS/Android Release 빌드, QA XCTest 통과 결과를 사용한다. 검증 후 앱·패키지 파일 변경이 없어 빌드나 기기 QA를 반복하지 않았다. GitHub Actions 워크플로는 0개로 원격 CI 통과와 구분한다.
+- **남은 작업:** 중간 등급 audit 14건(원인 advisory 2개)의 상위 패키지 수정과 허용 범위 내 해결 가능성을 먼저 확인한다. 허용 범위 밖 교체가 필요하면 해당 URL 디코딩/빌드 도구 경로의 호환성 검증을 별도 변경으로 진행한다. 타깃 사용자 관찰도 아직 미실시다. 완료한 P2·영상 QA는 반복하지 않고 VoiceOver 음성 생략 결정을 유지한다.
+- **보존:** 이번 통합에서는 실기기·시뮬레이터·Figma·다른 워크스페이스·원격 앱 데이터에 접근하지 않았다. 기존 Demo 데이터·영상과 로컬 QA 근거를 보존한다. 별도 리뷰 보고서는 만들지 않는다.
+
+## 직전 진행 — 2026-09-15 main 통합·Expo SDK 57 호환 패치
 
 - **통합 완료:** [PR #14](https://github.com/ParkJsoo/namgimeopsi/pull/14)를 merge commit으로 병합했다. `main`은 `1f3feed`이며 검토한 `29c29ba`와 파일 트리가 같다. 접근성·가독성 두 커밋과 인계가 모두 포함된다. 기존 Actions 워크플로는 0개다.
 - **의존성 범위:** 해당 main의 clean HEAD에서 `chore/expo-compatible-patches`를 만들었다. [Expo 공식 절차](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/)의 `expo install --fix`로 SDK 57 권장 버전에 맞췄다. Expo `57.0.16→57.0.22`, React Native `0.86.2→0.86.3`를 포함한 직접 의존성 15개와 관련 하위 의존성을 갱신하고 package.json/lockfile을 맞췄다. SDK·React·TypeScript·저장소/서버 SDK의 별도 버전 업그레이드는 포함하지 않는다. 앱 기능·설정·서버 코드는 그대로다.
