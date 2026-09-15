@@ -2,7 +2,23 @@
 
 > 새 세션에서 가장 먼저 읽는 작업 인계 문서입니다. 상태가 바뀌면 이 파일도 같이 갱신합니다.
 
-## 최신 진행 — 2026-09-15 하위 의존성 보안 수정·호환성 검증
+## 최신 진행 — 2026-09-15 URL 디코더 최종 검토·통합
+
+- **검토/통합:** 사용자 “다음 진행”에 따라 `0420300`의 어댑터·root override·lockfile·회귀 검사를 직접 검토했다. 추가 병합 차단 결함은 찾지 못했다. 원격 main은 `7c13d1e`로 새 변경이 없었다. [PR #17](https://github.com/ParkJsoo/namgimeopsi/pull/17)에 push했고 승인된 main 병합을 진행한다. 최종 병합 상태는 PR 링크를 따른다.
+- **검증 근거:** root/어댑터 manifest와 lockfile, 실제 query-string → 어댑터 → 공식 0.5.0 연결, QA 캐시 전후 불변 근거를 확인했다. 최신 `npm audit`도 모든 등급 0건이다. 아래 변경의 회귀 7건·기존 앱 회귀·Expo Doctor 21/21·전체 플랫폼 번들·iOS Release·QA XCTest 2건 통과 결과를 사용한다. 검증 후 실행 코드 변경이 없어 전체 검사를 반복하지 않았다. GitHub Actions 워크플로는 0개다.
+- **다음:** 미수정 P2 5건, 접근성 속성·가독성, 홈/README 문구, 호환 의존성 정비와 현재 npm 보안 경고 처리를 마쳤다. 다음 제품 검증은 한국 1~2인 가구 타깃 사용자 관찰이다. 실제 사용자 이해도·제품 효과는 아직 측정하지 않았다. 상위 xcode/query-string/Expo Router가 수정 버전을 직접 지원할 때 임시 override·어댑터 제거를 검토한다. 기존 촬영·영상 QA를 반복하지 않으며 VoiceOver 음성 생략 결정을 유지한다.
+- **보존:** 이번 통합에서 기기·시뮬레이터·Figma·다른 워크스페이스·원격 앱 데이터에는 접근하지 않았다. Demo 데이터·영상·로컬 QA 근거를 보존했다. 별도 리뷰 보고서는 만들지 않는다.
+
+## 직전 진행 — 2026-09-15 uuid 통합·URL 디코더 호환성 수정
+
+- **통합/Git:** uuid 수정 `f5bf738`을 검토해 추가 병합 차단 결함 없이 [PR #16](https://github.com/ParkJsoo/namgimeopsi/pull/16)으로 병합했다. main `7c13d1e`는 검토한 파일 트리와 같고 Actions 워크플로는 0개다. clean HEAD에서 `fix/url-decoder-compatibility`를 만들어 남은 디코더 경고를 처리한다.
+- **수정 방식:** `packages/decode-uri-component-compat/index.cjs`는 공식 [decode-uri-component 0.5.0](https://github.com/SamVerschueren/decode-uri-component/releases/tag/v0.5.0)의 default 함수를 CommonJS로 그대로 반환하는 어댑터다. 디코딩 알고리즘을 복사/수정하지 않는다. 공식 패키지는 npm alias `upstream-decode-uri-component`로 고정하고 registry URL/integrity를 lockfile에 유지한다. 루트의 로컬 의존성 및 동일 spec을 참조하는 override로 query-string 7에 어댑터를 연결한다. alias는 어댑터 내부에서 같은 override를 다시 적용하지 않도록 구분한다. Node 지원 범위는 기존 React Native와 동일한 `^20.19.4 || ^22.13.0 || ^24.3.0 || >=25.0.0`이며 ESM 동기 require를 지원한다. 상위 query-string/Expo Router가 수정된 디코더를 직접 지원하면 이 어댑터·override를 함께 제거한다.
+- **설치/audit:** `npm ci --ignore-scripts`로 재설치한 뒤 npm ls의 누락/invalid 항목 없이 query-string → 로컬 어댑터 → 공식 0.5.0 연결을 확인했다. 설치 후 패치 스크립트는 필요 없다. 전체 `npm audit`은 **3→0**이며 이전 uuid 수정 전 14개 경고가 모두 해소됐다. 이는 현재 npm advisory 검사 결과이며 제품 전체의 보안 보증으로 표현하지 않는다.
+- **회귀:** `test:dependencies`를 3→7건으로 확대했다. 한글·생활 단위·리터럴 +·반복/빈 쿼리, 실제 Expo Router의 홈 경로 해석, 비정상 UTF-8 앞뒤의 정상 문자열 보존을 확인한다. 별도 자식 프로세스(3초 상한)에서 `%FF` 1만 개를 쿼리로 전달하는 검사는 기존 공식 0.2.2를 require 경계에 연결했을 때 스택 초과로 실패하고 새 연결에서는 통과했다. 새 함수 자체를 흉내 낸 테스트가 아니라 실제 query-string/Expo Router를 실행한다. 수정 후 7건 모두 통과했다.
+- **검증:** Expo 호환 검사·Doctor 21/21, TypeScript·lint, domain 14·inventory hook 17/날짜 9/화면 8·receipts 날짜/세션/컴포넌트 8·recipes 7·accessibility 3 통과. 웹 정적 export 및 iOS/Android Hermes 번들 생성 통과. iOS 시뮬레이터 Release 빌드도 통과했다. QA XCTest 2건/실패 0: 홈 → 냉장고/필터 → 남은 음식 입력 → 저장 없이 닫기, 정상 한글 URL 및 `%FF` 1천 개 URL로 열기 → 냉장고/홈 탭 조작을 확인했다. 비정상 URL 이후 홈 캡처도 정상이다. 네이티브에서는 URL 이후 화면 동작을, Node 회귀에서는 실제 쿼리 값 보존까지 검사했다. iOS 번들 SHA-256 `12f5362d8195cae2b308e38608f766d2c1446f80275b536f841a5e16812b4bb4`. Android는 Hermes 번들 생성까지이며 새 APK 빌드/기기 실행은 포함하지 않는다.
+- **보존/다음:** 실기기·Demo·다른 워크스페이스·Figma에는 접근하지 않았다. QA UDID `6B38D865-7C34-45E2-9A8E-D425754394D9`의 재고 0·원장 0·outbox 0 전후 내용이 동일하며 저장·업로드·삭제를 실행하지 않았다. 글자 크기 `large`를 유지하고 QA 앱·시뮬레이터를 종료했다. 기존 두 영상 SHA-256 `29a203…9eca0` / `fd3359…542b` 일치를 확인했고 실제 VoiceOver 음성 생략 결정을 유지한다. 근거는 Git 제외 `.expo/security-qa/`에 보존하며 별도 리뷰 보고서는 만들지 않는다. 디코더 변경은 검증된 로컬 커밋(push·PR·병합 전)으로 남긴다. 다음은 이 변경의 최종 검토·통합과 타깃 사용자 관찰이며 현재 남은 npm audit 경고는 없다.
+
+## 직전 진행 — 2026-09-15 하위 의존성 보안 수정·호환성 검증
 
 - **Git/범위:** [PR #15](https://github.com/ParkJsoo/namgimeopsi/pull/15)는 병합 완료이며 `main`/`origin/main` `121b9fe`의 clean HEAD에서 `fix/transitive-dependency-security`를 만들었다. npm registry에서 최신 `expo-router@57.0.21 → query-string@7.1.3 → decode-uri-component@0.2.2`, `xcode@3.0.1 → uuid@7.0.3` 조합을 확인했다. 상위 패키지 허용 범위 안에는 두 advisory 수정 버전이 없다.
 - **수정:** `xcode` 하위에만 `uuid@11.1.1`을 지정하는 npm override를 추가했다. 이 버전은 [버퍼 경계 검사 advisory](https://github.com/advisories/GHSA-w5hq-g745-h8pq)의 수정 버전이며 CommonJS `require`와 Xcode가 사용하는 `uuid.v4()`를 제공한다. lockfile의 패키지 버전 변경은 uuid 하나다. 앱 런타임·직접 의존성·네이티브 설정·서버 소스 변경은 없다. 상위 xcode가 수정 버전을 정식 채택하면 override 제거를 검토한다.

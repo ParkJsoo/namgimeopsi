@@ -1,0 +1,12 @@
+{
+  "name": "@namgimeopsi/decode-uri-component-compat",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.cjs",
+  "engines": {
+    "node": "^20.19.4 || ^22.13.0 || ^24.3.0 || >=25.0.0"
+  },
+  "dependencies": {
+    "upstream-decode-uri-component": "npm:decode-uri-component@0.5.0"
+  }
+}
