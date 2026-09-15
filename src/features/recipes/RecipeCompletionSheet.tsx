@@ -78,7 +78,7 @@ export function RecipeCompletionSheet({
                   {items.map((candidate, index) => (
                     <Pressable key={candidate.id} accessibilityRole="radio"
                       accessibilityState={{ checked: candidate.id === item.id }}
-                      accessibilityLabel={`${candidate.name} 재고 ${index + 1}, ${candidate.storage}, ${getDateLabel(candidate, referenceDate)}, ${candidate.quantity}`}
+                      accessibilityLabel={`${candidate.name} 재고 ${index + 1}, ${candidate.quantity}, ${candidate.storage}, ${getDateLabel(candidate, referenceDate)}, 등록 ${new Date(candidate.createdAt).toLocaleString('ko-KR')}`}
                       onPress={() => setSavedDraft({ ...draft, selected: { ...draft.selected, [name]: candidate.id } })}
                       style={[styles.lotOption, candidate.id === item.id && styles.choiceSelected]}>
                       <Text style={styles.choiceText}>{candidate.id === item.id ? '●' : '○'} 재고 {index + 1} · {candidate.storage} · {candidate.quantity}</Text>
@@ -91,12 +91,16 @@ export function RecipeCompletionSheet({
               <View style={styles.choiceRow}>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel={`${item.name} 다 먹음`}
+                  accessibilityState={{ selected: mode === 'all' }}
                   onPress={() => setSavedDraft(() => ({ ...draft, modes: { ...draft.modes, [item.id]: 'all' } }))}
                   style={[styles.choice, mode === 'all' && styles.choiceSelected]}>
                   <Text style={[styles.choiceText, mode === 'all' && styles.choiceTextSelected]}>다 먹음</Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel={`${item.name} 남은 양`}
+                  accessibilityState={{ selected: mode === 'remaining' }}
                   onPress={() => setSavedDraft(() => ({ ...draft, modes: { ...draft.modes, [item.id]: 'remaining' } }))}
                   style={[styles.choice, mode === 'remaining' && styles.choiceSelected]}>
                   <Text style={[styles.choiceText, mode === 'remaining' && styles.choiceTextSelected]}>남은 양</Text>
