@@ -1,4 +1,7 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.112.4';
+import { corsHeaders as sdkCorsHeaders } from 'https://esm.sh/@supabase/supabase-js@2.112.4/cors';
+
+const corsHeaders = { ...sdkCorsHeaders, 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/heic']);
 const maxReceiptImageBytes = 10 * 1024 * 1024;
@@ -13,7 +16,7 @@ const fixtureCandidates = [
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
@@ -35,7 +38,7 @@ async function markFailed(
  * 영수증 원본을 서버에서 다시 검증하는 분석 진입점이다.
  * OCR provider가 배포되기 전에는 명시적인 fixture 결과만 기록하며, 원본을 AI가 읽은 것처럼 표시하지 않는다.
  */
-Deno.serve(async (request) => {
+async function analyzeReceipt(request: Request) {
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
   const url = Deno.env.get('SUPABASE_URL');
@@ -116,4 +119,13 @@ Deno.serve(async (request) => {
   if (updateError) return json({ error: 'scan_update_failed' }, 500);
 
   return json({ id: scan.id, status: 'ready', analysisSource: 'fixture' });
+}
+
+Deno.serve(async (request) => {
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
+  try {
+    return await analyzeReceipt(request);
+  } catch {
+    return json({ error: 'analysis_failed' }, 500);
+  }
 });
