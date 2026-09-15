@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { useAccessibilityAnnouncement } from '@/hooks/use-accessibility-announcement';
+
 import { KeyboardSheet } from '@/components/KeyboardSheet';
 import type { RecipeRecommendation } from '../domain/recipe-ranking';
 import type { InventoryItem } from '../inventory/types';
@@ -53,13 +55,19 @@ export function RecipeCompletionSheet({
   );
   const canConfirm = Boolean(recommendation && hasValidQuantities && hasChanges);
 
+  const missingQuantityNames = selectedItems.filter((item) =>
+    draft.modes[item.id] === 'remaining' && !draft.remainingQuantities[item.id]?.trim(),
+  ).map((item) => item.name);
+  useAccessibilityAnnouncement(recommendation && missingQuantityNames.length
+    ? `${missingQuantityNames.join(', ')} 남은 양을 입력해 주세요.` : null);
+
   const close = () => { setSavedDraft(null); onClose(); };
 
   return (
     <Modal animationType="slide" transparent visible={recommendation !== null} onRequestClose={close}>
       <KeyboardSheet>
         <View style={styles.handle} />
-        <Text style={styles.title}>조리·섭취를 완료할까요?</Text>
+        <Text accessibilityRole="header" style={styles.title}>조리·섭취를 완료할까요?</Text>
         <Text style={styles.recipeTitle}>{recommendation?.recipe.title}</Text>
         <Text style={styles.copy}>실제로 쓴 뒤 남은 양을 확인해 주세요. 생활 단위는 그대로 남겨요.</Text>
         <View style={styles.itemList}>
@@ -117,7 +125,7 @@ export function RecipeCompletionSheet({
                 />
               ) : null}
               {mode === 'remaining' && !draft.remainingQuantities[item.id]?.trim() ? (
-                <Text accessibilityRole="alert" style={styles.warning}>남은 양을 입력해 주세요.</Text>
+                <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.warning}>남은 양을 입력해 주세요.</Text>
               ) : null}
             </View>
             );

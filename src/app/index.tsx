@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAccessibilityAnnouncement } from '@/hooks/use-accessibility-announcement';
+
 import { KeyboardSheet } from '@/components/KeyboardSheet';
 import type { RecipeRecommendation } from '@/features/domain/recipe-ranking';
 import { getCookingCandidates } from '@/features/recipes/inventory-lots';
@@ -49,6 +51,8 @@ function StoragePicker({
       {(['냉장', '냉동', '실온'] as StoragePlace[]).map((storage) => (
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={`보관 위치 ${storage}`}
+          accessibilityState={{ selected: value === storage }}
           key={storage}
           onPress={() => onChange(storage)}
           style={[styles.option, value === storage && styles.optionSelected]}>
@@ -72,12 +76,14 @@ function KindPicker({
     <View style={styles.optionRow}>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ selected: value === 'ingredient' }}
         onPress={() => onChange('ingredient')}
         style={[styles.option, value === 'ingredient' && styles.optionSelected]}>
         <Text style={[styles.optionText, value === 'ingredient' && styles.optionTextSelected]}>식재료</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ selected: value === 'leftover' }}
         onPress={() => onChange('leftover')}
         style={[styles.option, value === 'leftover' && styles.optionSelected]}>
         <Text style={[styles.optionText, value === 'leftover' && styles.optionTextSelected]}>남은 음식</Text>
@@ -110,6 +116,19 @@ export default function HomeScreen() {
   const [draft, setDraft] = useState<InventoryDraft>(blankDraft);
   const [selectedStorage, setSelectedStorage] = useState<StoragePlace>('냉장');
   const [inventoryFilter, setInventoryFilter] = useState<'all' | 'leftover' | 'today'>('all');
+  const syncMessage = !isReady
+    ? syncStatus === 'error' ? '저장된 재고를 읽지 못했어요. 다시 시도해 주세요.' : '내 냉장고를 불러오고 있어요.'
+    : syncStatus === 'error' ? '저장 또는 동기화하지 못했어요. 탭해서 다시 시도해 주세요.'
+      : syncStatus === 'offline' ? '오프라인으로 저장했어요. 연결되면 동기화해요.'
+        : syncStatus === 'syncing' ? '재고를 안전하게 동기화하고 있어요.' : null;
+  useAccessibilityAnnouncement(
+    !editorOpen && !receiptEntryOpen && !pendingRecommendation && (syncStatus === 'error' || syncStatus === 'offline') ? syncMessage : null,
+  );
+
+
+  useAccessibilityAnnouncement(!editorOpen ? null
+    : !draft.quantity.trim() ? '남은 양을 입력해 주세요.'
+      : !isValidDateInput(draft.recommendedUseBy) ? '실제 날짜를 YYYY-MM-DD로 입력해 주세요.' : null);
 
   const priorityItems = useMemo(
     () => inventory.filter((item) => ['overdue', 'today', 'soon'].includes(getFoodStatus(item, referenceDate)))
@@ -214,7 +233,7 @@ export default function HomeScreen() {
         <View style={styles.loadingScreen}>
           {syncStatus === 'error' ? (
             <>
-              <Text accessibilityRole="alert" style={styles.eyebrow}>저장된 재고를 읽지 못했어요. 다시 시도해 주세요.</Text>
+              <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.eyebrow}>{syncMessage}</Text>
               <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
                 <Text style={styles.syncNoticeText}>다시 불러오기</Text>
               </Pressable>
@@ -230,13 +249,9 @@ export default function HomeScreen() {
       <View style={styles.app}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {syncStatus !== 'synced' ? (
-            <Pressable accessibilityRole="button" onPress={retrySync} style={styles.syncNotice}>
-              <Text accessibilityRole={syncStatus === 'error' ? 'alert' : undefined} style={styles.syncNoticeText}>
-                {syncStatus === 'error'
-                  ? '저장 또는 동기화하지 못했어요. 탭해서 다시 시도해 주세요.'
-                  : syncStatus === 'offline'
-                    ? '오프라인으로 저장했어요. 연결되면 동기화해요.'
-                    : '재고를 안전하게 동기화하고 있어요.'}
+            <Pressable accessibilityRole="button" accessibilityLabel={syncMessage ?? undefined} accessibilityHint="재고 저장과 동기화를 다시 시도해요." onPress={retrySync} style={styles.syncNotice}>
+              <Text accessibilityRole={syncStatus === 'error' ? 'alert' : undefined} accessibilityLiveRegion="polite" style={styles.syncNoticeText}>
+                {syncMessage}
               </Text>
             </Pressable>
           ) : null}
@@ -254,6 +269,8 @@ export default function HomeScreen() {
                 {featuredPriority ? (
                   <Pressable
                     accessibilityRole="button"
+                    accessibilityLabel={`${featuredPriority.name}, ${featuredPriority.quantity}, ${featuredPriority.storage}, ${getDateLabel(featuredPriority, referenceDate)}`}
+                    accessibilityHint="재고 수정 화면을 열어요."
                     onPress={() => openEdit(featuredPriority)}
                     style={styles.priorityRow}>
                     <View style={styles.priorityCopy}>
@@ -267,7 +284,7 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>오늘의 한 끼</Text>
+                <Text accessibilityRole="header" style={styles.sectionTitle}>오늘의 한 끼</Text>
               </View>
               {recommendations.length ? (
                 recommendations.map((recommendation) => (
@@ -304,6 +321,8 @@ export default function HomeScreen() {
                 ] as const).map(([filter, label]) => (
                   <Pressable
                     accessibilityRole="button"
+                    accessibilityLabel={`재고 필터 ${label}`}
+                    accessibilityState={{ selected: inventoryFilter === filter }}
                     key={filter}
                     onPress={() => setInventoryFilter(filter)}
                     style={[styles.filterChip, inventoryFilter === filter && styles.filterChipSelected]}>
@@ -313,7 +332,9 @@ export default function HomeScreen() {
               </View>
               <View style={styles.inventoryList}>
                 {visibleInventory.map((item) => (
-                    <Pressable key={item.id} onPress={() => openEdit(item)} style={styles.inventoryRow}>
+                    <Pressable key={item.id} accessibilityRole="button"
+                      accessibilityLabel={`${item.name}, ${item.quantity}, ${item.storage}, ${getDateLabel(item, referenceDate)}`}
+                      accessibilityHint="재고 수정 화면을 열어요." onPress={() => openEdit(item)} style={styles.inventoryRow}>
                       <View style={styles.inventoryCopy}>
                         <Text style={styles.foodName}>{item.name}</Text>
                         <Text style={styles.inventoryMeta}>{item.quantity} · {getDateDescription(item)}</Text>
@@ -332,14 +353,14 @@ export default function HomeScreen() {
         </ScrollView>
 
         <View style={styles.bottomBar}>
-          <Pressable accessibilityRole="tab" onPress={() => setActiveTab('home')} style={styles.tab}>
+          <Pressable accessibilityRole="tab" accessibilityLabel="홈" accessibilityState={{ selected: activeTab === 'home' }} onPress={() => setActiveTab('home')} style={styles.tab}>
             <Text style={[styles.tabIcon, activeTab === 'home' && styles.tabActive]}>⌂</Text>
             <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActive]}>홈</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => setReceiptEntryOpen(true)} style={styles.fab}>
+          <Pressable accessibilityRole="button" accessibilityLabel="재고 추가" accessibilityHint="영수증, 남은 음식, 직접 추가 중 등록 방법을 선택해요." onPress={() => setReceiptEntryOpen(true)} style={styles.fab}>
             <Text style={styles.fabText}>＋</Text>
           </Pressable>
-          <Pressable accessibilityRole="tab" onPress={() => setActiveTab('inventory')} style={styles.tab}>
+          <Pressable accessibilityRole="tab" accessibilityLabel="냉장고" accessibilityState={{ selected: activeTab === 'inventory' }} onPress={() => setActiveTab('inventory')} style={styles.tab}>
             <Text style={[styles.tabIcon, activeTab === 'inventory' && styles.tabActive]}>▤</Text>
             <Text style={[styles.tabLabel, activeTab === 'inventory' && styles.tabActive]}>냉장고</Text>
           </Pressable>
@@ -349,7 +370,7 @@ export default function HomeScreen() {
       <Modal animationType="slide" transparent visible={editorOpen} onRequestClose={() => setEditorOpen(false)}>
         <KeyboardSheet>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>{editingId ? '재고 수정' : '직접 추가'}</Text>
+          <Text accessibilityRole="header" style={styles.sheetTitle}>{editingId ? '재고 수정' : '직접 추가'}</Text>
           <Text style={styles.fieldLabel}>등록할 항목</Text>
           <KindPicker
             value={draft.kind}
@@ -378,13 +399,16 @@ export default function HomeScreen() {
             onChangeText={(quantity) => setDraft((current) => ({ ...current, quantity }))}
             style={styles.input}
           />
-          {!draft.quantity.trim() ? <Text accessibilityRole="alert" style={styles.safetyNote}>남은 양을 입력해 주세요.</Text> : null}
+          {!draft.quantity.trim() ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.safetyNote}>남은 양을 입력해 주세요.</Text> : null}
           <Text style={styles.fieldLabel}>보관 위치</Text>
           <StoragePicker value={draft.storage} onChange={(storage) => setDraft((current) => ({ ...current, storage }))} />
           <Text style={styles.fieldLabel}>권장 섭취일 (YYYY-MM-DD, 선택)</Text>
           <View style={styles.optionRow}>
             {([['오늘', 0], ['내일', 1]] as const).map(([label, days]) => (
-              <Pressable accessibilityRole="button" key={label} style={styles.option}
+              <Pressable accessibilityRole="button" key={label}
+                accessibilityLabel={`권장 섭취일 ${label}`}
+                accessibilityState={{ selected: draft.recommendedUseBy === dateAfterDays(days) }}
+                style={styles.option}
                 onPress={() => setDraft((current) => ({ ...current, recommendedUseBy: dateAfterDays(days) }))}>
                 <Text style={styles.optionText}>{label}</Text>
               </Pressable>
@@ -398,7 +422,7 @@ export default function HomeScreen() {
             onChangeText={(recommendedUseBy) => setDraft((current) => ({ ...current, recommendedUseBy }))}
             style={styles.input}
           />
-          {!isValidDateInput(draft.recommendedUseBy) ? <Text accessibilityRole="alert" style={styles.safetyNote}>실제 날짜를 YYYY-MM-DD로 입력해 주세요.</Text> : null}
+          {!isValidDateInput(draft.recommendedUseBy) ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.safetyNote}>실제 날짜를 YYYY-MM-DD로 입력해 주세요.</Text> : null}
           <Text style={styles.safetyNote}>
             {draft.kind === 'leftover'
               ? editingId ? '보관 시작일은 유지해요. 권장 섭취일은 식품 안전을 보장하지 않아요.' : '보관 시작 시각을 기록해요. 권장 섭취일은 식품 안전을 보장하지 않아요.'
@@ -408,7 +432,7 @@ export default function HomeScreen() {
             <Text style={styles.primaryButtonText}>{editingId ? '수정 완료' : '냉장고에 담기'}</Text>
           </Pressable>
           {editingId ? (
-            <Pressable accessibilityRole="button" onPress={deleteItem} style={styles.deleteButton}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${draft.name} 재고에서 제외`} onPress={deleteItem} style={styles.deleteButton}>
               <Text style={styles.deleteButtonText}>재고에서 제외</Text>
             </Pressable>
           ) : null}

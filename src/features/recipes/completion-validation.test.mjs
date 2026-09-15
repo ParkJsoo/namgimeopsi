@@ -22,8 +22,10 @@ function harness(items = [
   let cursor = 0;
   let confirmations = 0;
   let visible = true;
+  let announcement = null;
   let state = { version: 2, items, events: [] };
   const mocks = {
+    '@/hooks/use-accessibility-announcement': { useAccessibilityAnnouncement: (message) => { announcement = message; } },
     '../inventory/dates': dates,
     './inventory-lots': lots,
     react: {
@@ -55,6 +57,7 @@ function harness(items = [
   const { completeCookingSession } = load('../inventory/ledger.ts');
   return {
     get state() { return state; },
+    get announcement() { return announcement; },
     get confirmations() { return confirmations; },
     reopen() { visible = true; },
     render() {
@@ -102,6 +105,7 @@ for (const blank of ['', '   ']) {
   const tree = app.render();
   const confirm = button(tree, '재료 사용 완료');
   assert.equal(confirm.props.disabled, true);
+  assert.equal(app.announcement, '두부 남은 양을 입력해 주세요.');
   assert.ok(nodes(tree).some((node) => node.props?.accessibilityRole === 'alert' && text(node) === '남은 양을 입력해 주세요.'));
   confirm.props.onPress();
   assert.equal(app.confirmations, 0);
@@ -110,6 +114,7 @@ for (const blank of ['', '   ']) {
   nodes(tree).find((node) => node.type === 'TextInput').props.onChangeText('반 모');
   const corrected = app.render();
   assert.equal(button(corrected, '재료 사용 완료').props.disabled, false);
+  assert.equal(app.announcement, null);
   assert.ok(!text(corrected).includes('남은 양을 입력해 주세요.'));
   button(corrected, '재료 사용 완료').props.onPress();
   assert.equal(app.confirmations, 1);

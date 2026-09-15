@@ -19,6 +19,7 @@ function harness(services, confirm = async () => 'confirmed') {
   const slots = [];
   let cursor = 0;
   let effects = [];
+  const announcements = [];
   const react = {
     useState(initial) {
       const index = cursor++;
@@ -43,6 +44,7 @@ function harness(services, confirm = async () => 'confirmed') {
   const element = (type, props) => ({ type, props });
   const mocks = {
     react,
+    '@/hooks/use-accessibility-announcement': { useAccessibilityAnnouncement: (message) => react.useEffect(() => { if (message) announcements.push(message); }, [message]) },
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     'react-native': Object.assign(Object.fromEntries(['Modal', 'Pressable', 'Text', 'TextInput', 'View'].map((name) => [name, name])), { StyleSheet: { create: (styles) => styles } }),
     '@/components/KeyboardSheet': { KeyboardSheet: 'KeyboardSheet' },
@@ -69,6 +71,7 @@ function harness(services, confirm = async () => 'confirmed') {
   let closed = 0;
   let confirmed = 0;
   return {
+    announcements,
     get closed() { return closed; },
     get confirmed() { return confirmed; },
     render(visible = true) {
@@ -164,8 +167,11 @@ for (const outcome of ['confirmed', 'failed', 'throw']) {
   assert.equal(submitted.items.filter((item) => item.included).length, 6);
   if (outcome === 'confirmed') {
     assert.ok(text(result).includes('6개를 냉장고에 담았어요.'));
+    assert.ok(app.announcements.includes('6개를 냉장고에 담았어요.'));
+    assert.equal(nodes(result).find((node) => text(node) === '6개를 냉장고에 담았어요.').props.accessibilityLiveRegion, 'polite');
   } else {
     assert.ok(text(result).includes('저장하지 못했어요'));
+    assert.ok(app.announcements.some((message) => message.includes('저장하지 못했어요')));
     const field = nodes(result).find((node) => node.type === 'TextInput');
     assert.equal(field.props.editable, true);
     assert.equal(field.props.value, submitted.items[0].name);
@@ -174,3 +180,28 @@ for (const outcome of ['confirmed', 'failed', 'throw']) {
   }
   console.log(`✓ pending receipt locks edits and duplicate submits, then handles ${outcome}`);
 }
+
+
+const reviewApp = harness({
+  pickReceiptImage: async () => ({ fileName: 'receipt.png' }),
+  uploadReceiptImage: async () => ({ id: 'test-scan' }),
+  analyzeReceiptImage: async () => ({ id: 'test-scan', status: 'ready' }),
+});
+await press(reviewApp.render(), '영수증으로 등록');
+let review = reviewApp.render();
+const exclusion = nodes(review).find((node) => node.type === 'Pressable' && text(node) === '제외');
+assert.ok(exclusion.props.accessibilityLabel.includes('계란'));
+exclusion.props.onPress();
+review = reviewApp.render();
+assert.ok(nodes(review).some((node) => node.props?.accessibilityLabel === '계란 다시 포함'));
+let storage = nodes(review).find((node) => node.type.name === 'StoragePicker');
+const options = nodes(storage.type(storage.props)).filter((node) => node.type === 'Pressable');
+assert.equal(options.filter((node) => node.props.accessibilityState.selected).length, 1);
+assert.ok(options.every((node) => node.props.accessibilityLabel.includes('보관 위치')));
+options[1].props.onPress();
+storage = nodes(reviewApp.render()).find((node) => node.type.name === 'StoragePicker');
+assert.equal(nodes(storage.type(storage.props)).find((node) => node.type === 'Pressable' && text(node) === '냉동').props.accessibilityState.selected, true);
+const announced = reviewApp.announcements.length;
+reviewApp.render(false);
+assert.equal(reviewApp.announcements.length, announced, 'Hidden receipt notices must not announce');
+console.log('✓ receipt exclusion identifies its item and storage exposes selection; hidden notices stay silent');

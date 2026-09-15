@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { useAccessibilityAnnouncement } from '@/hooks/use-accessibility-announcement';
+
 import { KeyboardSheet } from '@/components/KeyboardSheet';
 
 import type { StoragePlace } from '../inventory/types';
@@ -28,14 +30,15 @@ function createReviewDraft(scan?: Pick<ReceiptReviewDraft, 'scanJobId' | 'source
   };
 }
 
-function StoragePicker({ value, onChange, disabled = false }: { value: StoragePlace; disabled?: boolean; onChange: (storage: StoragePlace) => void }) {
+function StoragePicker({ value, onChange, label, disabled = false }: { label: string; value: StoragePlace; disabled?: boolean; onChange: (storage: StoragePlace) => void }) {
   return (
     <View style={styles.storageRow}>
       {(['냉장', '냉동', '실온'] as StoragePlace[]).map((storage) => (
         <Pressable
           accessibilityRole="button"
           disabled={disabled}
-          accessibilityState={{ disabled }}
+          accessibilityLabel={`${label} 보관 위치 ${storage}`}
+          accessibilityState={{ selected: value === storage, disabled }}
           key={storage}
           onPress={() => onChange(storage)}
           style={[styles.storageOption, value === storage && styles.storageOptionSelected]}>
@@ -78,6 +81,10 @@ export function ReceiptEntrySheet({
   }, [visible]);
   const counts = getReceiptReviewCounts(draft);
   const canConfirm = canConfirmReceiptDraft(draft) && !isSaving;
+  useAccessibilityAnnouncement(!visible ? null
+    : stage === 'complete' ? `${confirmedCount}개를 냉장고에 담았어요.`
+      : stage === 'review' ? saveNotice
+        : stage === 'choice' ? scanNotice : null);
 
   const startReceiptReview = async () => {
     const isCurrent = reviewSession.current.begin();
@@ -187,9 +194,9 @@ export function ReceiptEntrySheet({
           <View style={styles.handle} />
           {stage === 'choice' ? (
             <>
-              <Text style={styles.title}>빠르게 추가할까요?</Text>
+              <Text accessibilityRole="header" style={styles.title}>빠르게 추가할까요?</Text>
               <Text style={styles.copy}>등록 방법을 고르면 다음 단계에서 직접 확인할 수 있어요.</Text>
-              {scanNotice ? <Text accessibilityRole="alert" style={styles.scanNotice}>{scanNotice}</Text> : null}
+              {scanNotice ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.scanNotice}>{scanNotice}</Text> : null}
               <Pressable accessibilityRole="button" onPress={startReceiptReview} style={styles.primaryButton}>
                 <Text style={styles.primaryButtonText}>영수증으로 등록</Text>
               </Pressable>
@@ -209,7 +216,7 @@ export function ReceiptEntrySheet({
 
           {stage === 'uploading' ? (
             <View style={styles.analysisBody}>
-              <Text style={styles.title}>영수증 원본을 안전하게 저장하고 있어요</Text>
+              <Text accessibilityRole="header" style={styles.title}>영수증 원본을 안전하게 저장하고 있어요</Text>
               <Text style={styles.analysisLead}>사진은 내 계정의 비공개 저장소에만 보관해요.</Text>
               <Text style={styles.analysisStep}>1. 파일 형식과 크기를 확인하고 있어요</Text>
               <Text style={styles.analysisStep}>2. 분석 작업을 준비하고 있어요</Text>
@@ -221,7 +228,7 @@ export function ReceiptEntrySheet({
 
           {stage === 'analyzing' ? (
             <View style={styles.analysisBody}>
-              <Text style={styles.title}>장 본 것을 정리하고 있어요</Text>
+              <Text accessibilityRole="header" style={styles.title}>장 본 것을 정리하고 있어요</Text>
               <Text style={styles.analysisLead}>원본의 소유권·형식·용량을 서버에서 한 번 더 확인해요.</Text>
               <Text style={styles.analysisStep}>1. 업로드한 파일을 확인하고 있어요</Text>
               <Text style={styles.analysisStep}>2. 검수용 샘플 품목을 준비하고 있어요</Text>
@@ -236,10 +243,10 @@ export function ReceiptEntrySheet({
 
           {stage === 'review' ? (
             <>
-              <Text style={styles.title}>장 본 것 확인</Text>
+              <Text accessibilityRole="header" style={styles.title}>장 본 것 확인</Text>
               <Text style={styles.copy}>샘플 품목 {counts.included}개를 선택했어요. 저장할 내용을 직접 확인해 주세요.</Text>
               {scanNotice ? <Text style={styles.scanNotice}>{scanNotice}</Text> : null}
-              {saveNotice ? <Text accessibilityRole="alert" style={styles.saveNotice}>{saveNotice}</Text> : null}
+              {saveNotice ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.saveNotice}>{saveNotice}</Text> : null}
               <View style={styles.reviewContent}>
                 {(['high', 'needs-review'] as const).map((confidence) => {
                   const sectionItems = draft.items.filter((item) => item.confidence === confidence);
@@ -260,6 +267,7 @@ export function ReceiptEntrySheet({
                               accessibilityRole="button"
                               disabled={isSaving}
                               accessibilityState={{ disabled: isSaving }}
+                              accessibilityLabel={`${item.name.trim() || item.rawName} ${item.included ? '제외' : '다시 포함'}`}
                               onPress={() => setDraft((current) => savingRef.current ? current : updateReceiptDraftItem(current, item.id, { included: !item.included }))}
                               style={styles.excludeButton}>
                               <Text style={styles.excludeButtonText}>{item.included ? '제외' : '다시 포함'}</Text>
@@ -285,6 +293,7 @@ export function ReceiptEntrySheet({
                               />
                               <Text style={styles.fieldLabel}>보관 위치</Text>
                               <StoragePicker
+                                label={item.name.trim() || item.rawName}
                                 disabled={isSaving}
                                 value={item.storage}
                                 onChange={(storage) => setDraft((current) => savingRef.current ? current : updateReceiptDraftItem(current, item.id, { storage }))}
@@ -301,7 +310,7 @@ export function ReceiptEntrySheet({
                                 }
                                 style={styles.input}
                               />
-                              {!isValidReceiptRecommendedDate(item.recommendedUseByAt) ? <Text accessibilityRole="alert" style={styles.needsReview}>실제 날짜를 YYYY-MM-DD로 입력해 주세요.</Text> : null}
+                              {!isValidReceiptRecommendedDate(item.recommendedUseByAt) ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.needsReview}>실제 날짜를 YYYY-MM-DD로 입력해 주세요.</Text> : null}
                               {item.labelExpiryAt ? <Text style={styles.dateNote}>포장 표기일 {item.labelExpiryAt}</Text> : null}
                             </>
                           ) : (
@@ -315,7 +324,7 @@ export function ReceiptEntrySheet({
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ disabled: !canConfirm }}
+                accessibilityState={{ disabled: !canConfirm, busy: isSaving }}
                 disabled={!canConfirm}
                 onPress={finishConfirmation}
                 style={[styles.primaryButton, !canConfirm && styles.primaryButtonDisabled]}>
@@ -329,7 +338,7 @@ export function ReceiptEntrySheet({
 
           {stage === 'complete' ? (
             <View style={styles.completeBody}>
-              <Text style={styles.title}>{confirmedCount}개를 냉장고에 담았어요.</Text>
+              <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.title}>{confirmedCount}개를 냉장고에 담았어요.</Text>
               <Text style={styles.copy}>두부처럼 먼저 쓰기 좋은 재료는 홈 추천에서 바로 확인할 수 있어요.</Text>
               <Pressable accessibilityRole="button" onPress={goHome} style={styles.primaryButton}>
                 <Text style={styles.primaryButtonText}>오늘의 한 끼 보기</Text>

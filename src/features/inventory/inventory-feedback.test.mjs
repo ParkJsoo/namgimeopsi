@@ -13,10 +13,11 @@ const code = ts.transpileModule(readFileSync(new URL('../../app/index.tsx', impo
 function harness(inventory = {}) {
   let cursor = 0;
   const slots = [];
-  const calls = { retry: 0, add: 0, update: 0 };
+  const calls = { retry: 0, add: 0, update: 0, announcements: [] };
   const state = { items: [], isReady: true, syncStatus: 'error', ...inventory };
   const element = (type, props) => ({ type, props });
   const mocks = {
+    '@/hooks/use-accessibility-announcement': { useAccessibilityAnnouncement: (message) => calls.announcements.push(message) },
     react: {
       useEffect: () => {},
       useMemo: (compute) => compute(),
@@ -104,3 +105,42 @@ for (const syncStatus of ['error', 'offline', 'syncing']) {
   assert.ok(!nodes(app.render()).some((node) => node.type === 'Pressable' && text(node).includes('동기화')));
   console.log(`✓ home and inventory expose ${syncStatus} and clear after recovery`);
 }
+
+
+const accessibleApp = harness({ syncStatus: 'synced' });
+const byLabel = (tree, label) => nodes(tree).find((node) => node.props?.accessibilityLabel === label);
+assert.equal(byLabel(accessibleApp.render(), '홈').props.accessibilityState.selected, true);
+byLabel(accessibleApp.render(), '냉장고').props.onPress();
+assert.equal(byLabel(accessibleApp.render(), '냉장고').props.accessibilityState.selected, true);
+assert.equal(byLabel(accessibleApp.render(), '홈').props.accessibilityState.selected, false);
+byLabel(accessibleApp.render(), '재고 필터 남은 음식').props.onPress();
+assert.equal(byLabel(accessibleApp.render(), '재고 필터 남은 음식').props.accessibilityState.selected, true);
+assert.equal(byLabel(accessibleApp.render(), '재고 필터 전체').props.accessibilityState.selected, false);
+function picker(app, name) { return nodes(app.render()).find((node) => node.type.name === name); }
+let storage = picker(accessibleApp, 'StoragePicker');
+assert.equal(byLabel(storage.type(storage.props), '보관 위치 냉장').props.accessibilityState.selected, true);
+byLabel(storage.type(storage.props), '보관 위치 냉동').props.onPress();
+storage = picker(accessibleApp, 'StoragePicker');
+assert.equal(byLabel(storage.type(storage.props), '보관 위치 냉동').props.accessibilityState.selected, true);
+assert.equal(byLabel(storage.type(storage.props), '보관 위치 냉장').props.accessibilityState.selected, false);
+assert.equal(byLabel(accessibleApp.render(), '재고 추가').props.accessibilityRole, 'button');
+byLabel(accessibleApp.render(), '재고 추가').props.onPress();
+nodes(accessibleApp.render()).find((node) => node.type === 'ReceiptEntrySheet').props.onLeftoverAdd();
+let kind = picker(accessibleApp, 'KindPicker');
+assert.equal(button(kind.type(kind.props), '남은 음식').props.accessibilityState.selected, true);
+button(kind.type(kind.props), '식재료').props.onPress();
+kind = picker(accessibleApp, 'KindPicker');
+assert.equal(button(kind.type(kind.props), '식재료').props.accessibilityState.selected, true);
+byLabel(accessibleApp.render(), '권장 섭취일 오늘').props.onPress();
+assert.equal(byLabel(accessibleApp.render(), '권장 섭취일 오늘').props.accessibilityState.selected, true);
+assert.equal(byLabel(accessibleApp.render(), '권장 섭취일 내일').props.accessibilityState.selected, false);
+console.log('✓ tab, filter, storage, kind and date selections expose updated states; add has a spoken label');
+
+const errorApp = harness();
+errorApp.render();
+assert.ok(errorApp.calls.announcements.some((message) => message?.includes('저장 또는 동기화하지 못했어요')));
+byLabel(errorApp.render(), '재고 추가').props.onPress();
+errorApp.calls.announcements = [];
+errorApp.render();
+assert.ok(errorApp.calls.announcements.every((message) => message === null), 'Background status cannot interrupt an open sheet');
+console.log('✓ visible sync errors request announcement; background errors stay silent during sheet use');

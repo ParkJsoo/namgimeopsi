@@ -12,7 +12,7 @@ export function RecipeCard({
   const { recipe, reason } = recommendation;
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.card}>
+    <Pressable accessibilityRole="button" accessibilityHint="사용한 재료와 남은 양을 확인하는 화면을 열어요." onPress={onPress} style={styles.card}>
       <View style={styles.copy}>
         <Text style={styles.title}>{recipe.title}</Text>
         <Text style={styles.meta}>{recipe.cookMinutes}분 · {recipe.servings}인분</Text>
